@@ -6,16 +6,19 @@ const SYSTEM_PROMPT = `你是一位專業的產業研究分析師。針對給定
 2. 產業成長趨勢與景氣循環位置
 3. 競爭格局與公司核心競爭優勢
 4. 相關政策法規環境
-以繁體中文條列回答，控制在250字內。`;
+若有提供即時資料，請優先參考即時資料進行分析。以繁體中文條列回答，控制在250字內。`;
 
-const run = async (query) => {
+const run = async (query, realtimeContext = '') => {
   if (config.APP_ENV !== 'production') {
     return `【產業研究】${query} 屬於半導體產業，市場規模持續擴大，受惠AI需求爆發，競爭優勢明顯。`;
   }
+  const userContent = realtimeContext
+    ? `請分析：${query}\n\n以下為即時參考資料：\n${realtimeContext}`
+    : `請分析：${query}`;
   const { data } = await createChatCompletion({
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: `請分析：${query}` },
+      { role: 'user', content: userContent },
     ],
     maxTokens: 400,
     temperature: 0.3,
