@@ -40,7 +40,7 @@ const handleContext = async (context) => (
   || context
 );
 
-const handleEvents = async (events = []) => (
+const handleEvents = async (events = [], botConfig = null) => (
   (Promise.all(
     (await Promise.all(
       (await Promise.all(
@@ -48,7 +48,7 @@ const handleEvents = async (events = []) => (
           .map((event) => new Event(event))
           .filter((event) => event.isMessage)
           .filter((event) => event.isText || event.isAudio || event.isImage)
-          .map((event) => new Context(event))
+          .map((event) => new Context(event, botConfig))
           .map((context) => context.initialize()),
       ))
         .map((context) => (context.error ? context : handleContext(context))),

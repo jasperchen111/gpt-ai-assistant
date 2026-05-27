@@ -1,4 +1,3 @@
-import config from '../../config/index.js';
 import { t } from '../../locales/index.js';
 import { ROLE_AI, ROLE_HUMAN } from '../../services/openai.js';
 import { generateCompletion } from '../../utils/index.js';
@@ -23,10 +22,10 @@ const check = (context) => (
  */
 const exec = (context) => check(context) && (
   async () => {
-    const prompt = getPrompt(context.userId);
+    const prompt = getPrompt(context.userId, context.botConfig);
     try {
       if (context.event.isText) {
-        prompt.write(ROLE_HUMAN, `${t('__COMPLETION_DEFAULT_AI_TONE')(config.BOT_TONE)}${context.trimmedText}`).write(ROLE_AI);
+        prompt.write(ROLE_HUMAN, `${t('__COMPLETION_DEFAULT_AI_TONE')(context.botTone)}${context.trimmedText}`).write(ROLE_AI);
       }
       if (context.event.isImage) {
         const { trimmedText } = context;
@@ -35,7 +34,7 @@ const exec = (context) => check(context) && (
       const { text, isFinishReasonStop } = await generateCompletion({ prompt });
       prompt.patch(text);
       setPrompt(context.userId, prompt);
-      updateHistory(context.id, (history) => history.write(config.BOT_NAME, text));
+      updateHistory(context.id, (history) => history.write(context.botName, text));
       const actions = isFinishReasonStop ? [COMMAND_BOT_FORGET] : [COMMAND_BOT_CONTINUE];
       context.pushText(text, actions);
     } catch (err) {

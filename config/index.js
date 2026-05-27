@@ -51,6 +51,14 @@ const config = Object.freeze({
   SERPAPI_TIMEOUT: env.SERPAPI_TIMEOUT || env.APP_API_TIMEOUT,
   SERPAPI_API_KEY: env.SERPAPI_API_KEY || null,
   SERPAPI_LOCATION: env.SERPAPI_LOCATION || 'tw',
+  BOTS: (() => {
+    if (!env.BOTS) return [];
+    try {
+      return JSON.parse(env.BOTS);
+    } catch {
+      return [];
+    }
+  })(),
 });
 
 export default config;

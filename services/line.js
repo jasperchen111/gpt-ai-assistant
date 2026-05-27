@@ -30,7 +30,9 @@ const client = axios.create({
 });
 
 client.interceptors.request.use((c) => {
-  c.headers.Authorization = `Bearer ${config.LINE_CHANNEL_ACCESS_TOKEN}`;
+  if (!c.headers.Authorization) {
+    c.headers.Authorization = `Bearer ${config.LINE_CHANNEL_ACCESS_TOKEN}`;
+  }
   return handleRequest(c);
 });
 
@@ -44,10 +46,11 @@ client.interceptors.response.use(handleFulfilled, (err) => {
 const reply = ({
   replyToken,
   messages,
+  token,
 }) => client.post('/v2/bot/message/reply', {
   replyToken,
   messages,
-});
+}, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
 
 const fetchGroupSummary = ({
   groupId,

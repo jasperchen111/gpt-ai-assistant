@@ -45,9 +45,27 @@ class Context {
 
   /**
    * @param {Event} event
+   * @param {Object|null} botConfig
    */
-  constructor(event) {
+  constructor(event, botConfig = null) {
     this.event = event;
+    this.botConfig = botConfig;
+  }
+
+  get botName() {
+    return this.botConfig?.botName || config.BOT_NAME;
+  }
+
+  get botTone() {
+    return this.botConfig?.botTone || config.BOT_TONE;
+  }
+
+  get botDeactivated() {
+    return this.botConfig?.botDeactivated ?? config.BOT_DEACTIVATED;
+  }
+
+  get lineChannelAccessToken() {
+    return this.botConfig?.lineChannelAccessToken || config.LINE_CHANNEL_ACCESS_TOKEN;
   }
 
   get id() {
@@ -81,11 +99,11 @@ class Context {
    */
   get trimmedText() {
     if (this.event.isText) {
-      const text = this.event.text.replaceAll('　', ' ').replace(config.BOT_NAME, '').trim();
+      const text = this.event.text.replaceAll('　', ' ').replace(this.botName, '').trim();
       return addMark(text);
     }
     if (this.event.isAudio) {
-      const text = this.transcription.replace(config.BOT_NAME, '').trim();
+      const text = this.transcription.replace(this.botName, '').trim();
       return addMark(text);
     }
     if (this.event.isImage) {
@@ -97,15 +115,15 @@ class Context {
   get hasBotName() {
     if (this.event.isText) {
       const text = this.event.text.replaceAll('　', ' ').trim().toLowerCase();
-      return text.startsWith(config.BOT_NAME.toLowerCase());
+      return text.startsWith(this.botName.toLowerCase());
     }
     if (this.event.isAudio) {
       const text = this.transcription.toLowerCase();
-      return text.startsWith(config.BOT_NAME.toLowerCase());
+      return text.startsWith(this.botName.toLowerCase());
     }
     if (this.event.isImage) {
       const text = this.transcription.toLowerCase();
-      return text.startsWith(config.BOT_NAME.toLowerCase());
+      return text.startsWith(this.botName.toLowerCase());
     }
     return false;
   }
@@ -159,7 +177,7 @@ class Context {
         type: SOURCE_TYPE_GROUP,
         name: groupName,
         bot: new Bot({
-          isActivated: !config.BOT_DEACTIVATED,
+          isActivated: !this.botDeactivated,
         }),
       });
     }
@@ -169,7 +187,7 @@ class Context {
         type: SOURCE_TYPE_USER,
         name: displayName,
         bot: new Bot({
-          isActivated: !config.BOT_DEACTIVATED,
+          isActivated: !this.botDeactivated,
         }),
       });
     }

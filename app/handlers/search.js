@@ -33,7 +33,7 @@ const exec = (context) => check(context) && (
       const { text, isFinishReasonStop } = await generateCompletion({ prompt });
       prompt.patch(text);
       setPrompt(context.userId, prompt);
-      updateHistory(context.id, (history) => history.write(config.BOT_NAME, text));
+      updateHistory(context.id, (history) => history.write(context.botName, text));
       const actions = isFinishReasonStop ? [] : [COMMAND_BOT_CONTINUE];
       context.pushText(text, actions);
     } catch (err) {

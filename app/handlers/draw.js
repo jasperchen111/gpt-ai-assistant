@@ -1,4 +1,3 @@
-import config from '../../config/index.js';
 import { MOCK_TEXT_OK } from '../../constants/mock.js';
 import { ROLE_AI, ROLE_HUMAN } from '../../services/openai.js';
 import { generateImage } from '../../utils/index.js';
@@ -26,7 +25,7 @@ const exec = (context) => check(context) && (
       const { url } = await generateImage({ prompt: trimmedText });
       prompt.patch(MOCK_TEXT_OK);
       setPrompt(context.userId, prompt);
-      updateHistory(context.id, (history) => history.write(config.BOT_NAME, MOCK_TEXT_OK));
+      updateHistory(context.id, (history) => history.write(context.botName, MOCK_TEXT_OK));
       context.pushImage(url);
     } catch (err) {
       context.pushError(err);

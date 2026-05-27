@@ -4,9 +4,19 @@ const prompts = new Map();
 
 /**
  * @param {string} userId
+ * @param {Object|null} botConfig
  * @returns {Prompt}
  */
-const getPrompt = (userId) => prompts.get(userId) || new Prompt();
+const getPrompt = (userId, botConfig = null) => {
+  if (prompts.has(userId)) return prompts.get(userId);
+  return new Prompt(botConfig ? {
+    appInitPrompt: botConfig.appInitPrompt,
+    humanName: botConfig.humanName,
+    humanInitPrompt: botConfig.humanInitPrompt,
+    botName: botConfig.botName,
+    botInitPrompt: botConfig.botInitPrompt,
+  } : {});
+};
 
 /**
  * @param {string} userId

@@ -11,11 +11,17 @@ const MAX_TOKENS = config.APP_MAX_PROMPT_TOKENS;
 class Prompt {
   messages = [];
 
-  constructor() {
+  constructor({
+    appInitPrompt = config.APP_INIT_PROMPT,
+    humanName = config.HUMAN_NAME,
+    humanInitPrompt = config.HUMAN_INIT_PROMPT,
+    botName = config.BOT_NAME,
+    botInitPrompt = config.BOT_INIT_PROMPT,
+  } = {}) {
     this
-      .write(ROLE_SYSTEM, config.APP_INIT_PROMPT || t('__COMPLETION_DEFAULT_SYSTEM_PROMPT'))
-      .write(ROLE_HUMAN, `${t('__COMPLETION_DEFAULT_HUMAN_PROMPT')(config.HUMAN_NAME)}${config.HUMAN_INIT_PROMPT}`)
-      .write(ROLE_AI, `${t('__COMPLETION_DEFAULT_AI_PROMPT')(config.BOT_NAME)}${config.BOT_INIT_PROMPT}`);
+      .write(ROLE_SYSTEM, appInitPrompt || t('__COMPLETION_DEFAULT_SYSTEM_PROMPT'))
+      .write(ROLE_HUMAN, `${t('__COMPLETION_DEFAULT_HUMAN_PROMPT')(humanName)}${humanInitPrompt}`)
+      .write(ROLE_AI, `${t('__COMPLETION_DEFAULT_AI_PROMPT')(botName)}${botInitPrompt}`);
   }
 
   /**

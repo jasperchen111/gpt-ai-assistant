@@ -3,7 +3,7 @@ import { handleEvents, printPrompts } from '../app/index.js';
 import config from '../config/index.js';
 import { validateLineSignature } from '../middleware/index.js';
 import storage from '../storage/index.js';
-import { fetchVersion, getVersion } from '../utils/index.js';
+import { fetchVersion, getVersion, validateSignature } from '../utils/index.js';
 
 const app = express();
 
@@ -33,6 +33,29 @@ app.post(config.APP_WEBHOOK_PATH, validateLineSignature, async (req, res) => {
     res.sendStatus(500);
   }
   if (config.APP_DEBUG) printPrompts();
+});
+
+config.BOTS.forEach((botDef) => {
+  const webhookPath = botDef.webhookPath || `/webhook/${botDef.name}`;
+  app.post(webhookPath, (req, res, next) => {
+    const secret = botDef.lineChannelSecret || '';
+    const signature = req.header('x-line-signature');
+    if (!validateSignature(req.rawBody, secret, signature)) {
+      res.sendStatus(403);
+      return;
+    }
+    next();
+  }, async (req, res) => {
+    try {
+      await storage.initialize();
+      await handleEvents(req.body.events, botDef);
+      res.sendStatus(200);
+    } catch (err) {
+      console.error(err.message);
+      res.sendStatus(500);
+    }
+    if (config.APP_DEBUG) printPrompts();
+  });
 });
 
 if (config.APP_PORT) {

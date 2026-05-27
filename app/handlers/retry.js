@@ -1,4 +1,3 @@
-import config from '../../config/index.js';
 import { ROLE_AI } from '../../services/openai.js';
 import { generateCompletion } from '../../utils/index.js';
 import { COMMAND_BOT_CONTINUE, COMMAND_BOT_RETRY, GENERAL_COMMANDS } from '../commands/index.js';
@@ -25,7 +24,7 @@ const exec = (context) => check(context) && (
       const { text, isFinishReasonStop } = await generateCompletion({ prompt });
       prompt.patch(text);
       setPrompt(context.userId, prompt);
-      updateHistory(context.id, (history) => history.write(config.BOT_NAME, text));
+      updateHistory(context.id, (history) => history.write(context.botName, text));
       const actions = isFinishReasonStop ? [] : [COMMAND_BOT_CONTINUE];
       context.pushText(text, actions);
     } catch (err) {
