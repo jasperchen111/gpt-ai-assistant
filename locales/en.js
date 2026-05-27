@@ -1,4 +1,8 @@
 const en = {
+  __COMMAND_BOT_INVEST_LABEL: 'Invest',
+  __COMMAND_BOT_INVEST_TEXT: 'Invest',
+  __COMMAND_BOT_INVEST_ALIASES: ['Stock analysis', 'Analyze stock'],
+  __COMMAND_BOT_INVEST_USAGE: 'Please enter "Invest [stock symbol or company name]", e.g.: Invest TSMC',
   __COMMAND_ANALYZE_ANALYZE_LABEL: 'Analyze',
   __COMMAND_ANALYZE_ANALYZE_TEXT: 'Analyze',
   __COMMAND_ANALYZE_ANALYZE_PROMPT: 'Please analyze the following statements.',

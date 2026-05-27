@@ -1,5 +1,6 @@
 import { TYPE_ANALYZE, TYPE_SUM, TYPE_TRANSLATE } from '../../constants/command.js';
 import COMMAND_ANALYZE_ANALYZE from './analyze-analyze.js';
+import COMMAND_BOT_INVEST from './bot-invest.js';
 import COMMAND_ANALYZE_LITERARILY from './analyze-literarily.js';
 import COMMAND_ANALYZE_MATHEMATICALLY from './analyze-mathematically.js';
 import COMMAND_ANALYZE_NUMEROLOGICALLY from './analyze-numerologically.js';
@@ -35,6 +36,7 @@ import COMMAND_TRANSLATE_TO_EN from './translate-to-en.js';
 import COMMAND_TRANSLATE_TO_JA from './translate-to-ja.js';
 
 export const ALL_COMMANDS = [
+  COMMAND_BOT_INVEST,
   COMMAND_ANALYZE_ANALYZE,
   COMMAND_ANALYZE_LITERARILY,
   COMMAND_ANALYZE_MATHEMATICALLY,
@@ -76,6 +78,7 @@ export const INFO_COMMANDS = [
 ];
 
 export const GENERAL_COMMANDS = [
+  COMMAND_BOT_INVEST,
   COMMAND_SYS_COMMAND,
   COMMAND_BOT_SUMMON_DEMO,
   COMMAND_BOT_TALK_DEMO,
@@ -95,6 +98,7 @@ export const ENQUIRE_COMMANDS = ALL_COMMANDS.filter(({ type }) => (
 ));
 
 export {
+  COMMAND_BOT_INVEST,
   COMMAND_ANALYZE_ANALYZE,
   COMMAND_ANALYZE_LITERARILY,
   COMMAND_ANALYZE_MATHEMATICALLY,

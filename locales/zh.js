@@ -1,4 +1,8 @@
 const zh = {
+  __COMMAND_BOT_INVEST_LABEL: '投資分析',
+  __COMMAND_BOT_INVEST_TEXT: '投資分析',
+  __COMMAND_BOT_INVEST_ALIASES: ['股票分析', '分析股票'],
+  __COMMAND_BOT_INVEST_USAGE: '請輸入「投資分析 [股票代碼或公司名稱]」，例如：投資分析 台積電',
   __COMMAND_ANALYZE_ANALYZE_LABEL: '分析',
   __COMMAND_ANALYZE_ANALYZE_TEXT: '分析',
   __COMMAND_ANALYZE_ANALYZE_PROMPT: '分析以下內容，並給予細節。',

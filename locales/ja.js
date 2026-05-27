@@ -1,4 +1,8 @@
 const ja = {
+  __COMMAND_BOT_INVEST_LABEL: '投資分析',
+  __COMMAND_BOT_INVEST_TEXT: '投資分析',
+  __COMMAND_BOT_INVEST_ALIASES: ['株式分析', '銘柄分析'],
+  __COMMAND_BOT_INVEST_USAGE: '「投資分析 [銘柄コードまたは企業名]」と入力してください。例：投資分析 トヨタ',
   __COMMAND_ANALYZE_ANALYZE_LABEL: '分析して',
   __COMMAND_ANALYZE_ANALYZE_TEXT: '分析して',
   __COMMAND_ANALYZE_ANALYZE_PROMPT: '以下の内容を詳しく分析してください。',
