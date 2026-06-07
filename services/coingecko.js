@@ -1,91 +1,88 @@
 import axios from 'axios';
 
-const COINGECKO_BASE_URL = 'https://api.coingecko.com/api/v3';
+const BINANCE_BASE_URL = 'https://api.binance.com';
 
 const client = axios.create({
-  baseURL: COINGECKO_BASE_URL,
+  baseURL: BINANCE_BASE_URL,
   timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
-const coinIdMap = {
-  'BTC': 'bitcoin',
-  'ETH': 'ethereum',
-  'SOL': 'solana',
-  'BNB': 'binancecoin',
-  'XRP': 'ripple',
-  'ADA': 'cardano',
-  'DOGE': 'dogecoin',
-  'AVAX': 'avalanche-2',
-  'DOT': 'polkadot',
-  'MATIC': 'matic-network',
-  'LINK': 'chainlink',
-  'UNI': 'uniswap',
-  'ATOM': 'cosmos',
-  'LTC': 'litecoin',
-};
-
-const getCoinId = (symbol) => {
-  const upperSymbol = symbol.toUpperCase().replace('-USDT', '').replace('-USD', '');
-  return coinIdMap[upperSymbol] || upperSymbol.toLowerCase();
+const formatSymbol = (instId) => {
+  return instId.replace('-', '').replace('USDT', 'USDT');
 };
 
 export const getTicker = async (instId = 'BTC-USDT') => {
-  const coinId = getCoinId(instId);
-  const response = await client.get(`/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true`);
-
-  const data = response.data[coinId];
-  if (!data) throw new Error(`找不到 ${instId} 的數據`);
+  const symbol = formatSymbol(instId);
+  const response = await client.get(`/api/v3/ticker/24hr?symbol=${symbol}`);
 
   return {
     code: '0',
     data: [{
       instId,
-      last: data.usd.toString(),
-      changePerc: (data.usd_24h_change / 100).toString(),
-      vol24h: data.usd_24h_vol?.toString() || '0',
+      last: response.data.lastPrice,
+      changePerc: (parseFloat(response.data.priceChangePercent) / 100).toString(),
+      vol24h: response.data.volume,
+      high24h: response.data.highPrice,
+      low24h: response.data.lowPrice,
     }],
   };
 };
 
 export const getCandles = async (instId = 'BTC-USDT', bar = '1H', limit = 100) => {
-  const coinId = getCoinId(instId);
-
-  const daysMap = {
-    '1m': 1,
-    '5m': 1,
-    '15m': 1,
-    '30m': 1,
-    '1H': 7,
-    '4H': 30,
-    '1D': 90,
+  const symbol = formatSymbol(instId);
+  const intervalMap = {
+    '1m': '1m',
+    '5m': '5m',
+    '15m': '15m',
+    '30m': '30m',
+    '1H': '1h',
+    '4H': '4h',
+    '1D': '1d',
   };
-  const days = daysMap[bar] || 7;
+  const interval = intervalMap[bar] || '1h';
 
-  const response = await client.get(`/coins/${coinId}/ohlc?vs_currency=usd&days=${days}`);
+  const response = await client.get(`/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
 
   const data = response.data.map((candle) => [
     candle[0].toString(),
-    candle[1].toString(),
-    candle[2].toString(),
-    candle[3].toString(),
-    candle[4].toString(),
-    '0',
-  ]).slice(-limit);
+    candle[1],
+    candle[2],
+    candle[3],
+    candle[4],
+    candle[5],
+  ]);
 
   return { code: '0', data };
 };
 
 export const getHistoryCandles = async (instId = 'BTC-USDT', bar = '1H', after = '', before = '', limit = 100) => {
-  return getCandles(instId, bar, limit);
-};
+  const symbol = formatSymbol(instId);
+  const intervalMap = {
+    '1m': '1m',
+    '5m': '5m',
+    '15m': '15m',
+    '30m': '30m',
+    '1H': '1h',
+    '4H': '4h',
+    '1D': '1d',
+  };
+  const interval = intervalMap[bar] || '1h';
 
-export const getMarketChart = async (instId = 'BTC-USDT', days = 30) => {
-  const coinId = getCoinId(instId);
-  const response = await client.get(`/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`);
-  return response.data;
+  let url = `/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+  if (after) url += `&endTime=${after}`;
+
+  const response = await client.get(url);
+
+  const data = response.data.map((candle) => [
+    candle[0].toString(),
+    candle[1],
+    candle[2],
+    candle[3],
+    candle[4],
+    candle[5],
+  ]);
+
+  return { code: '0', data };
 };
 
 export const calculateSMA = (prices, period) => {
@@ -192,26 +189,25 @@ export const calculateTechnicalIndicators = (candles) => {
 };
 
 export const placeOrder = async () => {
-  throw new Error('CoinGecko 不支援交易功能，僅供數據查詢');
+  throw new Error('此模式不支援交易功能');
 };
 
 export const cancelOrder = async () => {
-  throw new Error('CoinGecko 不支援交易功能，僅供數據查詢');
+  throw new Error('此模式不支援交易功能');
 };
 
 export const getAccountBalance = async () => {
-  throw new Error('CoinGecko 不支援帳戶查詢功能');
+  throw new Error('此模式不支援帳戶查詢');
 };
 
 export const getOrderBook = async () => {
-  throw new Error('CoinGecko 不支援訂單簿查詢');
+  throw new Error('此模式不支援訂單簿查詢');
 };
 
 export default {
   getTicker,
   getCandles,
   getHistoryCandles,
-  getMarketChart,
   calculateSMA,
   calculateEMA,
   calculateRSI,
