@@ -51,6 +51,10 @@ const config = Object.freeze({
   SERPAPI_TIMEOUT: env.SERPAPI_TIMEOUT || env.APP_API_TIMEOUT,
   SERPAPI_API_KEY: env.SERPAPI_API_KEY || null,
   SERPAPI_LOCATION: env.SERPAPI_LOCATION || 'tw',
+  OKX_API_KEY: env.OKX_API_KEY || null,
+  OKX_SECRET_KEY: env.OKX_SECRET_KEY || null,
+  OKX_PASSPHRASE: env.OKX_PASSPHRASE || null,
+  OKX_SIMULATED: env.OKX_SIMULATED || 'true',
 });
 
 export default config;

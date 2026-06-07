@@ -1,4 +1,6 @@
 import activateHandler from './activate.js';
+import { execAutoStart as autoStartHandler, execAutoStop as autoStopHandler, execStatus as statusHandler } from './auto-trading.js';
+import { execBacktest as backtestHandler, execCompare as compareHandler } from './backtest.js';
 import commandHandler from './command.js';
 import continueHandler from './continue.js';
 import deactivateHandler from './deactivate.js';
@@ -15,7 +17,11 @@ import versionHandler from './version.js';
 
 export {
   activateHandler,
+  autoStartHandler,
+  autoStopHandler,
+  backtestHandler,
   commandHandler,
+  compareHandler,
   continueHandler,
   deactivateHandler,
   deployHandler,
@@ -26,6 +32,7 @@ export {
   reportHandler,
   retryHandler,
   searchHandler,
+  statusHandler,
   talkHandler,
   versionHandler,
 };

@@ -1,7 +1,11 @@
 import { replyMessage } from '../utils/index.js';
 import {
   activateHandler,
+  autoStartHandler,
+  autoStopHandler,
+  backtestHandler,
   commandHandler,
+  compareHandler,
   continueHandler,
   deactivateHandler,
   deployHandler,
@@ -12,6 +16,7 @@ import {
   reportHandler,
   retryHandler,
   searchHandler,
+  statusHandler,
   talkHandler,
   versionHandler,
 } from './handlers/index.js';
@@ -24,7 +29,11 @@ import Event from './models/event.js';
  */
 const handleContext = async (context) => (
   activateHandler(context)
+  || autoStartHandler(context)
+  || autoStopHandler(context)
+  || backtestHandler(context)
   || commandHandler(context)
+  || compareHandler(context)
   || continueHandler(context)
   || deactivateHandler(context)
   || deployHandler(context)
@@ -35,6 +44,7 @@ const handleContext = async (context) => (
   || reportHandler(context)
   || retryHandler(context)
   || searchHandler(context)
+  || statusHandler(context)
   || versionHandler(context)
   || talkHandler(context)
   || context

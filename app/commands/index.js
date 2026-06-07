@@ -19,6 +19,11 @@ import COMMAND_BOT_TALK_DEMO from './bot-talk-demo.js';
 import COMMAND_BOT_TALK from './bot-talk.js';
 import Command from './command.js';
 import COMMAND_SUM_ADVISE from './sum-advise.js';
+import COMMAND_TRADING_AUTO_START from './trading-auto-start.js';
+import COMMAND_TRADING_AUTO_STOP from './trading-auto-stop.js';
+import COMMAND_TRADING_BACKTEST from './trading-backtest.js';
+import COMMAND_TRADING_COMPARE from './trading-compare.js';
+import COMMAND_TRADING_STATUS from './trading-status.js';
 import COMMAND_SUM_APOLOGIZE from './sum-apologize.js';
 import COMMAND_SUM_BLAME from './sum-blame.js';
 import COMMAND_SUM_COMFORT from './sum-comfort.js';
@@ -67,6 +72,11 @@ export const ALL_COMMANDS = [
   COMMAND_SYS_VERSION,
   COMMAND_TRANSLATE_TO_EN,
   COMMAND_TRANSLATE_TO_JA,
+  COMMAND_TRADING_AUTO_START,
+  COMMAND_TRADING_AUTO_STOP,
+  COMMAND_TRADING_BACKTEST,
+  COMMAND_TRADING_COMPARE,
+  COMMAND_TRADING_STATUS,
 ];
 
 export const INFO_COMMANDS = [
@@ -128,4 +138,9 @@ export {
   COMMAND_SYS_VERSION,
   COMMAND_TRANSLATE_TO_EN,
   COMMAND_TRANSLATE_TO_JA,
+  COMMAND_TRADING_AUTO_START,
+  COMMAND_TRADING_AUTO_STOP,
+  COMMAND_TRADING_BACKTEST,
+  COMMAND_TRADING_COMPARE,
+  COMMAND_TRADING_STATUS,
 };
