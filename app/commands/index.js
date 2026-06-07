@@ -1,4 +1,4 @@
-import { TYPE_ANALYZE, TYPE_SUM, TYPE_TRANSLATE } from '../../constants/command.js';
+import { TYPE_ANALYZE, TYPE_SUM, TYPE_TRANSLATE, TYPE_TRADE } from '../../constants/command.js';
 import COMMAND_ANALYZE_ANALYZE from './analyze-analyze.js';
 import COMMAND_ANALYZE_LITERARILY from './analyze-literarily.js';
 import COMMAND_ANALYZE_MATHEMATICALLY from './analyze-mathematically.js';
@@ -19,6 +19,9 @@ import COMMAND_BOT_TALK_DEMO from './bot-talk-demo.js';
 import COMMAND_BOT_TALK from './bot-talk.js';
 import Command from './command.js';
 import COMMAND_SUM_ADVISE from './sum-advise.js';
+import COMMAND_TRADE_ANALYZE from './trade-analyze.js';
+import COMMAND_TRADE_PRICE from './trade-price.js';
+import COMMAND_TRADE_BALANCE from './trade-balance.js';
 import COMMAND_SUM_APOLOGIZE from './sum-apologize.js';
 import COMMAND_SUM_BLAME from './sum-blame.js';
 import COMMAND_SUM_COMFORT from './sum-comfort.js';
@@ -67,6 +70,9 @@ export const ALL_COMMANDS = [
   COMMAND_SYS_VERSION,
   COMMAND_TRANSLATE_TO_EN,
   COMMAND_TRANSLATE_TO_JA,
+  COMMAND_TRADE_ANALYZE,
+  COMMAND_TRADE_PRICE,
+  COMMAND_TRADE_BALANCE,
 ];
 
 export const INFO_COMMANDS = [
@@ -86,6 +92,15 @@ export const GENERAL_COMMANDS = [
   COMMAND_BOT_FORGET,
   COMMAND_SUM_SUM,
   COMMAND_ANALYZE_ANALYZE,
+  COMMAND_TRADE_ANALYZE,
+  COMMAND_TRADE_PRICE,
+  COMMAND_TRADE_BALANCE,
+];
+
+export const TRADE_COMMANDS = [
+  COMMAND_TRADE_ANALYZE,
+  COMMAND_TRADE_PRICE,
+  COMMAND_TRADE_BALANCE,
 ];
 
 export const ENQUIRE_COMMANDS = ALL_COMMANDS.filter(({ type }) => (
@@ -128,4 +143,7 @@ export {
   COMMAND_SYS_VERSION,
   COMMAND_TRANSLATE_TO_EN,
   COMMAND_TRANSLATE_TO_JA,
+  COMMAND_TRADE_ANALYZE,
+  COMMAND_TRADE_PRICE,
+  COMMAND_TRADE_BALANCE,
 };
