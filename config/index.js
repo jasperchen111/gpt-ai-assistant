@@ -57,6 +57,7 @@ const config = Object.freeze({
   OKX_SIMULATED: env.OKX_SIMULATED || 'true',
   BINANCE_API_KEY: env.BINANCE_API_KEY || null,
   BINANCE_SECRET_KEY: env.BINANCE_SECRET_KEY || null,
+  DISCORD_BOT_TOKEN: env.DISCORD_BOT_TOKEN || null,
 });
 
 export default config;
