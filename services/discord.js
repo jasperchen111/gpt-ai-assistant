@@ -29,8 +29,12 @@ const parseArgs = (content) => {
   for (const arg of args) {
     const upper = arg.toUpperCase();
 
-    if (upper.includes('-USDT') || upper.includes('-USD')) {
+    if (upper.includes('-USDT')) {
+      result.instId = upper;
+    } else if (upper.includes('-USD')) {
       result.instId = upper.replace('-USD', '-USDT');
+    } else if (['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'MATIC'].includes(upper)) {
+      result.instId = upper + '-USDT';
     } else if (['SMA', '均線', 'MA'].includes(upper)) {
       result.strategy = STRATEGY_SMA_CROSS;
     } else if (['RSI', '超買超賣'].includes(upper)) {

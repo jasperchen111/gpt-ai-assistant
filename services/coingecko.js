@@ -8,7 +8,7 @@ const client = axios.create({
 });
 
 const formatSymbol = (instId) => {
-  return instId.replace('-', '').replace('USDT', 'USDT');
+  return instId.replace('-', '');
 };
 
 export const getTicker = async (instId = 'BTC-USDT') => {
