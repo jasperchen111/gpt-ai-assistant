@@ -22,6 +22,9 @@ import COMMAND_SUM_ADVISE from './sum-advise.js';
 import COMMAND_TRADE_ANALYZE from './trade-analyze.js';
 import COMMAND_TRADE_PRICE from './trade-price.js';
 import COMMAND_TRADE_BALANCE from './trade-balance.js';
+import COMMAND_TRADE_GRID from './trade-grid.js';
+import COMMAND_TRADE_DCA from './trade-dca.js';
+import COMMAND_TRADE_TREND from './trade-trend.js';
 import COMMAND_SUM_APOLOGIZE from './sum-apologize.js';
 import COMMAND_SUM_BLAME from './sum-blame.js';
 import COMMAND_SUM_COMFORT from './sum-comfort.js';
@@ -73,6 +76,9 @@ export const ALL_COMMANDS = [
   COMMAND_TRADE_ANALYZE,
   COMMAND_TRADE_PRICE,
   COMMAND_TRADE_BALANCE,
+  COMMAND_TRADE_GRID,
+  COMMAND_TRADE_DCA,
+  COMMAND_TRADE_TREND,
 ];
 
 export const INFO_COMMANDS = [
@@ -101,6 +107,9 @@ export const TRADE_COMMANDS = [
   COMMAND_TRADE_ANALYZE,
   COMMAND_TRADE_PRICE,
   COMMAND_TRADE_BALANCE,
+  COMMAND_TRADE_GRID,
+  COMMAND_TRADE_DCA,
+  COMMAND_TRADE_TREND,
 ];
 
 export const ENQUIRE_COMMANDS = ALL_COMMANDS.filter(({ type }) => (
@@ -146,4 +155,7 @@ export {
   COMMAND_TRADE_ANALYZE,
   COMMAND_TRADE_PRICE,
   COMMAND_TRADE_BALANCE,
+  COMMAND_TRADE_GRID,
+  COMMAND_TRADE_DCA,
+  COMMAND_TRADE_TREND,
 };

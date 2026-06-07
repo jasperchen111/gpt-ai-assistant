@@ -7,3 +7,6 @@ export const TYPE_TRADE = 'trade';
 export const COMMAND_TRADE_ANALYZE = 'trade-analyze';
 export const COMMAND_TRADE_PRICE = 'trade-price';
 export const COMMAND_TRADE_BALANCE = 'trade-balance';
+export const COMMAND_TRADE_GRID = 'trade-grid';
+export const COMMAND_TRADE_DCA = 'trade-dca';
+export const COMMAND_TRADE_TREND = 'trade-trend';
