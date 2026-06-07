@@ -1,4 +1,4 @@
-import okx from './okx.js';
+import exchange from './coingecko.js';
 
 export const STRATEGY_SMA_CROSS = 'sma_cross';
 export const STRATEGY_RSI = 'rsi';
@@ -32,7 +32,7 @@ export const fetchBacktestData = async (instId = 'BTC-USDT', bar = '1H', days = 
   const fetchLimit = 100;
 
   while (allCandles.length < targetBars) {
-    const response = await okx.getHistoryCandles(instId, bar, after, '', fetchLimit);
+    const response = await exchange.getHistoryCandles(instId, bar, after, '', fetchLimit);
     if (response.code !== '0' || !response.data || response.data.length === 0) break;
 
     allCandles.push(...response.data);
@@ -51,10 +51,10 @@ const smaCrossStrategy = (candles, params = {}) => {
   const closes = candles.map((c) => c.close);
 
   for (let i = longPeriod; i < candles.length; i++) {
-    const shortSma = okx.calculateSMA(closes.slice(0, i + 1), shortPeriod);
-    const longSma = okx.calculateSMA(closes.slice(0, i + 1), longPeriod);
-    const prevShortSma = okx.calculateSMA(closes.slice(0, i), shortPeriod);
-    const prevLongSma = okx.calculateSMA(closes.slice(0, i), longPeriod);
+    const shortSma = exchange.calculateSMA(closes.slice(0, i + 1), shortPeriod);
+    const longSma = exchange.calculateSMA(closes.slice(0, i + 1), longPeriod);
+    const prevShortSma = exchange.calculateSMA(closes.slice(0, i), shortPeriod);
+    const prevLongSma = exchange.calculateSMA(closes.slice(0, i), longPeriod);
 
     if (prevShortSma <= prevLongSma && shortSma > longSma) {
       signals.push({ index: i, type: 'BUY', price: candles[i].close, timestamp: candles[i].timestamp });
@@ -72,8 +72,8 @@ const rsiStrategy = (candles, params = {}) => {
   const closes = candles.map((c) => c.close);
 
   for (let i = period + 1; i < candles.length; i++) {
-    const rsi = okx.calculateRSI(closes.slice(0, i + 1), period);
-    const prevRsi = okx.calculateRSI(closes.slice(0, i), period);
+    const rsi = exchange.calculateRSI(closes.slice(0, i + 1), period);
+    const prevRsi = exchange.calculateRSI(closes.slice(0, i), period);
 
     if (prevRsi <= oversold && rsi > oversold) {
       signals.push({ index: i, type: 'BUY', price: candles[i].close, timestamp: candles[i].timestamp, rsi });
@@ -91,7 +91,7 @@ const bollingerStrategy = (candles, params = {}) => {
   const closes = candles.map((c) => c.close);
 
   for (let i = period; i < candles.length; i++) {
-    const bb = okx.calculateBollingerBands(closes.slice(0, i + 1), period, stdDev);
+    const bb = exchange.calculateBollingerBands(closes.slice(0, i + 1), period, stdDev);
     const price = candles[i].close;
     const prevPrice = candles[i - 1].close;
 

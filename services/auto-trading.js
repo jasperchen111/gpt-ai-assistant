@@ -1,4 +1,4 @@
-import okx from './okx.js';
+import exchange from './coingecko.js';
 import { createChatCompletion, ROLE_SYSTEM, ROLE_HUMAN } from './openai.js';
 
 export const TRADING_MODE_PAPER = 'paper';
@@ -68,7 +68,7 @@ const executeTrade = async (instId, signal, amount, mode = TRADING_MODE_PAPER) =
 
   try {
     const side = signal.signal.toLowerCase();
-    const result = await okx.placeOrder(instId, side, 'market', amount);
+    const result = await exchange.placeOrder(instId, side, 'market', amount);
     return {
       success: result.code === '0',
       mode: 'live',
@@ -118,13 +118,13 @@ export const startAutoTrading = async (options = {}) => {
     if (!strategy.isRunning) return;
 
     try {
-      const candlesResponse = await okx.getCandles(instId, '1H', 50);
+      const candlesResponse = await exchange.getCandles(instId, '1H', 50);
       if (candlesResponse.code !== '0') {
         throw new Error('無法取得市場數據');
       }
 
       const candles = candlesResponse.data;
-      const indicators = okx.calculateTechnicalIndicators(candles);
+      const indicators = exchange.calculateTechnicalIndicators(candles);
 
       const analysis = await analyzeMarket(instId, candles, indicators);
       analysis.currentPrice = indicators.currentPrice;
