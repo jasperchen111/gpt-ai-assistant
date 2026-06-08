@@ -2,7 +2,7 @@ import { Client, GatewayIntentBits, EmbedBuilder } from 'discord.js';
 import config from '../config/index.js';
 import backtest, { STRATEGY_SMA_CROSS, STRATEGY_RSI, STRATEGY_BOLLINGER, STRATEGY_GRID } from './backtest.js';
 import autoTrading from './auto-trading.js';
-import { adaptiveTrader } from './adaptive-trading.js';
+import adaptiveModule from './adaptive-trading.js';
 import exchange from './coingecko.js';
 
 const client = new Client({
@@ -313,7 +313,7 @@ const handleSmartStart = async (message, content) => {
   const loadingMsg = await message.reply('🧠 正在分析市場並選擇最佳策略...');
 
   try {
-    const { AdaptiveTrading } = await import('./adaptive-trading.js');
+    const { AdaptiveTrading } = adaptiveModule;
     const trader = new AdaptiveTrading();
 
     const result = await trader.start({
