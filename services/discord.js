@@ -5,6 +5,7 @@ import autoTrading from './auto-trading.js';
 import adaptiveModule from './adaptive-trading.js';
 import { MultiCoinTrading } from './multi-coin-trading.js';
 import { OKXLiveTrading } from './okx-live-trading.js';
+import { multiAIAdvisor } from './multi-ai-advisor.js';
 import exchange from './coingecko.js';
 
 const client = new Client({
@@ -285,6 +286,8 @@ const handleHelp = async (message) => {
       { name: '🧠 智能交易', value: '`!smart BTC-USDT`\n自動選擇並優化策略', inline: true },
       { name: '🌐 多幣種交易', value: '`!multi`\n自動掃描多幣種', inline: true },
       { name: '📡 市場掃描', value: '`!scan`\n掃描所有幣種機會', inline: true },
+      { name: '🤖 AI 顧問團', value: '`!ai BTC`\n3個AI專家討論分析', inline: true },
+      { name: '💱 OKX 交易', value: '`!okx start`\n連接交易所自動交易', inline: true },
     )
     .addFields({
       name: '📝 策略選項',
@@ -712,6 +715,26 @@ const handleOKXStop = async (message) => {
   return true;
 };
 
+// 多 AI 顧問分析
+const handleAIAdvisor = async (message, content) => {
+  const args = content.split(/\s+/).slice(1);
+  const instId = args[0]?.toUpperCase() || 'BTC-USDT';
+
+  // 格式化交易對
+  const formattedInstId = instId.includes('-') ? instId : `${instId}-USDT`;
+
+  const loadingMsg = await message.reply(`🤖 正在召集 AI 顧問團分析 **${formattedInstId}**...`);
+
+  try {
+    const analysis = await multiAIAdvisor.analyzeWithAllAdvisors(formattedInstId);
+    const responseText = multiAIAdvisor.formatDiscordMessage(analysis);
+
+    await loadingMsg.edit(responseText);
+  } catch (error) {
+    await loadingMsg.edit(`❌ AI 分析失敗: ${error.message}`);
+  }
+};
+
 const handleOKXStatus = async (message) => {
   const userId = message.author.id;
   const trader = userOKXTraders.get(userId);
@@ -840,6 +863,12 @@ client.on('messageCreate', async (message) => {
       case '幫助':
       case 'h':
         await handleHelp(message);
+        break;
+
+      case 'ai':
+      case '分析':
+      case 'advisor':
+        await handleAIAdvisor(message, content);
         break;
 
       default:
