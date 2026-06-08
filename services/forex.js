@@ -137,7 +137,6 @@ export const calculateTechnicalIndicators = (candles) => {
 
 export default {
   FOREX_PAIRS,
-  getForexPrice,
   getForexCandles,
   calculateSMA,
   calculateEMA,
