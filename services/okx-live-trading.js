@@ -7,6 +7,7 @@ export const LIVE_WATCH_LIST = [
   'SOL-USDT',
   'XRP-USDT',
   'DOGE-USDT',
+  'PAXG-USDT',  // 黃金代幣，與實體黃金 1:1 掛鉤
 ];
 
 export class OKXLiveTrading {
