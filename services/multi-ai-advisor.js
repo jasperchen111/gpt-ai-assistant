@@ -1,66 +1,17 @@
-import axios from 'axios';
-import config from '../config/index.js';
 import okx from './okx.js';
-
-const callGroq = async (systemPrompt, userPrompt) => {
-  // 除錯：檢查 API Key
-  const apiKey = config.GROQ_API_KEY;
-  console.log('[DEBUG] GROQ_API_KEY exists:', !!apiKey, 'length:', apiKey?.length || 0);
-
-  if (!apiKey) {
-    throw new Error('GROQ_API_KEY 未設定');
-  }
-
-  try {
-    const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.3,
-      max_tokens: 300,
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.GROQ_API_KEY}`,
-      },
-      timeout: 30000,
-    });
-    return response.data.choices[0].message.content;
-  } catch (error) {
-    console.error('[GROQ ERROR]', error.response?.data || error.message);
-    throw error;
-  }
-};
 
 const AI_ADVISORS = {
   technicalAnalyst: {
     name: '技術分析師',
     emoji: '📊',
-    systemPrompt: `你是專業的技術分析師，專注於：
-- RSI、MACD、布林通道等指標
-- K線形態識別
-- 支撐壓力位分析
-只回覆 JSON 格式：{"opinion": "BUY/SELL/HOLD", "confidence": 0-100, "reason": "簡短原因"}`,
   },
   trendAnalyst: {
     name: '趨勢判斷師',
     emoji: '📈',
-    systemPrompt: `你是市場趨勢專家，專注於：
-- 判斷大週期趨勢（多頭/空頭/盤整）
-- 均線排列分析
-- 成交量趨勢
-只回覆 JSON 格式：{"opinion": "BUY/SELL/HOLD", "confidence": 0-100, "reason": "簡短原因"}`,
   },
   riskManager: {
     name: '風險管理師',
     emoji: '🛡️',
-    systemPrompt: `你是風險管理專家，專注於：
-- 波動率評估
-- 倉位建議
-- 止損止盈位置
-只回覆 JSON 格式：{"opinion": "BUY/SELL/HOLD", "confidence": 0-100, "reason": "簡短原因", "positionSize": "小/中/大"}`,
   },
 };
 
@@ -80,23 +31,25 @@ export class MultiAIAdvisor {
 
       const shortSma = okx.calculateSMA(closes, 10);
       const longSma = okx.calculateSMA(closes, 30);
+      const rsi = indicators.rsi14;
+      const bb = indicators.bollingerBands;
+      const price = indicators.currentPrice;
+
+      // 計算價格變化
+      const priceChange24h = ((closes[closes.length - 1] - closes[closes.length - 25]) / closes[closes.length - 25]) * 100;
 
       return {
         instId,
-        currentPrice: indicators.currentPrice,
-        rsi14: indicators.rsi14,
+        currentPrice: price,
+        rsi14: rsi,
         sma20: indicators.sma20,
         sma50: indicators.sma50,
         shortSma,
         longSma,
-        bollingerBands: indicators.bollingerBands,
-        trend: shortSma > longSma ? '上漲趨勢' : '下跌趨勢',
-        recentCandles: candles.slice(0, 10).map(c => ({
-          open: parseFloat(c[1]),
-          high: parseFloat(c[2]),
-          low: parseFloat(c[3]),
-          close: parseFloat(c[4]),
-        })),
+        bollingerBands: bb,
+        priceChange24h,
+        trend: shortSma > longSma ? '上漲' : '下跌',
+        closes,
       };
     } catch (error) {
       console.error('取得市場數據失敗:', error.message);
@@ -104,45 +57,160 @@ export class MultiAIAdvisor {
     }
   }
 
-  async askAdvisor(advisorKey, marketData) {
-    const advisor = AI_ADVISORS[advisorKey];
-    if (!advisor) return null;
+  // 技術分析師 - 專注指標
+  analyzeTechnical(marketData) {
+    const { rsi14, bollingerBands, currentPrice } = marketData;
+    let opinion = 'HOLD';
+    let confidence = 50;
+    let reason = '指標中性';
 
-    const prompt = `分析以下 ${marketData.instId} 數據，給出交易建議：
-
-當前價格：$${marketData.currentPrice?.toFixed(2)}
-RSI(14)：${marketData.rsi14?.toFixed(1) || 'N/A'}
-SMA(20)：$${marketData.sma20?.toFixed(2) || 'N/A'}
-SMA(50)：$${marketData.sma50?.toFixed(2) || 'N/A'}
-短期均線(10)：$${marketData.shortSma?.toFixed(2) || 'N/A'}
-長期均線(30)：$${marketData.longSma?.toFixed(2) || 'N/A'}
-布林通道：上軌 $${marketData.bollingerBands?.upper?.toFixed(2) || 'N/A'} / 下軌 $${marketData.bollingerBands?.lower?.toFixed(2) || 'N/A'}
-趨勢：${marketData.trend}
-
-請給出你的分析意見。`;
-
-    try {
-      const content = await callGroq(advisor.systemPrompt, prompt);
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-
-      if (jsonMatch) {
-        const result = JSON.parse(jsonMatch[0]);
-        return {
-          advisor: advisor.name,
-          emoji: advisor.emoji,
-          ...result,
-        };
+    if (rsi14) {
+      if (rsi14 < 30) {
+        opinion = 'BUY';
+        confidence = 80 + (30 - rsi14);
+        reason = `RSI ${rsi14.toFixed(1)} 超賣，反彈機率高`;
+      } else if (rsi14 > 70) {
+        opinion = 'SELL';
+        confidence = 80 + (rsi14 - 70);
+        reason = `RSI ${rsi14.toFixed(1)} 超買，回調風險`;
+      } else if (rsi14 < 40) {
+        opinion = 'BUY';
+        confidence = 60;
+        reason = `RSI ${rsi14.toFixed(1)} 偏低，可考慮買入`;
+      } else if (rsi14 > 60) {
+        opinion = 'SELL';
+        confidence = 60;
+        reason = `RSI ${rsi14.toFixed(1)} 偏高，注意風險`;
+      } else {
+        reason = `RSI ${rsi14.toFixed(1)} 中性區間`;
       }
-    } catch (error) {
-      console.error(`${advisor.name} 分析失敗:`, error.message);
+    }
+
+    // 布林通道加強判斷
+    if (bollingerBands && currentPrice) {
+      if (currentPrice < bollingerBands.lower) {
+        if (opinion === 'BUY') confidence += 10;
+        else { opinion = 'BUY'; confidence = 70; }
+        reason += '，價格觸及下軌';
+      } else if (currentPrice > bollingerBands.upper) {
+        if (opinion === 'SELL') confidence += 10;
+        else { opinion = 'SELL'; confidence = 70; }
+        reason += '，價格觸及上軌';
+      }
     }
 
     return {
-      advisor: advisor.name,
-      emoji: advisor.emoji,
-      opinion: 'HOLD',
-      confidence: 0,
-      reason: '分析失敗',
+      advisor: AI_ADVISORS.technicalAnalyst.name,
+      emoji: AI_ADVISORS.technicalAnalyst.emoji,
+      opinion,
+      confidence: Math.min(confidence, 95),
+      reason,
+    };
+  }
+
+  // 趨勢判斷師 - 專注趨勢
+  analyzeTrend(marketData) {
+    const { shortSma, longSma, sma20, sma50, priceChange24h, closes } = marketData;
+    let opinion = 'HOLD';
+    let confidence = 50;
+    let reason = '趨勢不明';
+
+    // SMA 交叉判斷
+    if (shortSma && longSma) {
+      const smaDiff = ((shortSma - longSma) / longSma) * 100;
+
+      if (smaDiff > 2) {
+        opinion = 'BUY';
+        confidence = 70 + Math.min(smaDiff * 5, 20);
+        reason = `短均線高於長均線 ${smaDiff.toFixed(1)}%，多頭趨勢`;
+      } else if (smaDiff < -2) {
+        opinion = 'SELL';
+        confidence = 70 + Math.min(Math.abs(smaDiff) * 5, 20);
+        reason = `短均線低於長均線 ${Math.abs(smaDiff).toFixed(1)}%，空頭趨勢`;
+      } else {
+        reason = '均線糾結，盤整狀態';
+      }
+    }
+
+    // 24小時漲跌幅
+    if (priceChange24h) {
+      if (priceChange24h > 5) {
+        if (opinion !== 'SELL') {
+          opinion = 'BUY';
+          confidence = Math.max(confidence, 65);
+        }
+        reason += `，24h漲 ${priceChange24h.toFixed(1)}%`;
+      } else if (priceChange24h < -5) {
+        if (opinion !== 'BUY') {
+          opinion = 'SELL';
+          confidence = Math.max(confidence, 65);
+        }
+        reason += `，24h跌 ${Math.abs(priceChange24h).toFixed(1)}%`;
+      }
+    }
+
+    return {
+      advisor: AI_ADVISORS.trendAnalyst.name,
+      emoji: AI_ADVISORS.trendAnalyst.emoji,
+      opinion,
+      confidence: Math.min(confidence, 95),
+      reason,
+    };
+  }
+
+  // 風險管理師 - 專注風險
+  analyzeRisk(marketData) {
+    const { rsi14, priceChange24h, bollingerBands, currentPrice } = marketData;
+    let opinion = 'HOLD';
+    let confidence = 60;
+    let reason = '風險中等';
+    let positionSize = '中';
+
+    // 波動率評估
+    let volatilityRisk = 'medium';
+    if (bollingerBands) {
+      const bandWidth = ((bollingerBands.upper - bollingerBands.lower) / bollingerBands.middle) * 100;
+      if (bandWidth > 10) {
+        volatilityRisk = 'high';
+        positionSize = '小';
+        reason = `波動率高 (${bandWidth.toFixed(1)}%)，建議輕倉`;
+      } else if (bandWidth < 3) {
+        volatilityRisk = 'low';
+        positionSize = '大';
+        reason = `波動率低，可適度加倉`;
+      }
+    }
+
+    // 綜合風險判斷
+    if (rsi14) {
+      if (rsi14 < 25) {
+        opinion = 'BUY';
+        confidence = 75;
+        reason = `極度超賣，風險報酬比佳`;
+        positionSize = '中';
+      } else if (rsi14 > 75) {
+        opinion = 'SELL';
+        confidence = 75;
+        reason = `極度超買，風險偏高`;
+        positionSize = '小';
+      }
+    }
+
+    // 大幅波動警示
+    if (Math.abs(priceChange24h) > 10) {
+      opinion = 'HOLD';
+      confidence = 80;
+      reason = `24h波動 ${Math.abs(priceChange24h).toFixed(1)}%，建議觀望`;
+      positionSize = '小';
+    }
+
+    return {
+      advisor: AI_ADVISORS.riskManager.name,
+      emoji: AI_ADVISORS.riskManager.emoji,
+      opinion,
+      confidence: Math.min(confidence, 95),
+      reason,
+      positionSize,
     };
   }
 
@@ -154,11 +222,12 @@ SMA(50)：$${marketData.sma50?.toFixed(2) || 'N/A'}
 
     console.log(`🤖 多 AI 開始分析 ${instId}...`);
 
-    // 並行詢問所有顧問
-    const advisorKeys = Object.keys(AI_ADVISORS);
-    const opinions = await Promise.all(
-      advisorKeys.map(key => this.askAdvisor(key, marketData))
-    );
+    // 三個專家分析
+    const opinions = [
+      this.analyzeTechnical(marketData),
+      this.analyzeTrend(marketData),
+      this.analyzeRisk(marketData),
+    ];
 
     // 統計投票
     const votes = { BUY: 0, SELL: 0, HOLD: 0 };
@@ -212,7 +281,8 @@ SMA(50)：$${marketData.sma50?.toFixed(2) || 'N/A'}
     }
 
     let message = `**🤖 多 AI 協作分析 - ${analysis.instId}**\n`;
-    message += `💰 當前價格：$${analysis.marketData.currentPrice?.toFixed(2)}\n\n`;
+    message += `💰 當前價格：$${analysis.marketData.currentPrice?.toFixed(2)}\n`;
+    message += `📊 RSI: ${analysis.marketData.rsi14?.toFixed(1) || 'N/A'} | 趨勢: ${analysis.marketData.trend}\n\n`;
 
     // 各顧問意見
     message += `**📋 專家意見：**\n`;
@@ -245,13 +315,13 @@ SMA(50)：$${marketData.sma50?.toFixed(2) || 'N/A'}
         if (!analysis.error) {
           results.push(analysis);
         }
-        await new Promise(r => setTimeout(r, 500)); // 避免 API 限制
+        await new Promise(r => setTimeout(r, 300));
       } catch (error) {
         console.error(`${instId} 分析失敗:`, error.message);
       }
     }
 
-    // 按照推薦程度排序：BUY > SELL > HOLD，再按信心度
+    // 按照推薦程度排序
     results.sort((a, b) => {
       const actionScore = { BUY: 3, SELL: 2, HOLD: 1 };
       const scoreA = actionScore[a.finalDecision] * 100 + a.confidence;
@@ -274,7 +344,7 @@ SMA(50)：$${marketData.sma50?.toFixed(2) || 'N/A'}
     for (const r of results) {
       const emoji = r.finalDecision === 'BUY' ? '🟢' : r.finalDecision === 'SELL' ? '🔴' : '⚪';
       const votes = `(${r.votes.BUY}/${r.votes.HOLD}/${r.votes.SELL})`;
-      message += `${emoji} **${r.instId}** | ${r.finalDecision} ${r.confidence}% | 價格: $${r.marketData.currentPrice?.toFixed(2)} | 投票${votes}\n`;
+      message += `${emoji} **${r.instId}** | ${r.finalDecision} ${r.confidence}% | $${r.marketData.currentPrice?.toFixed(2)} | RSI:${r.marketData.rsi14?.toFixed(0) || 'N/A'} | 投票${votes}\n`;
     }
 
     // 最佳機會
