@@ -6,6 +6,7 @@ import adaptiveModule from './adaptive-trading.js';
 import { MultiCoinTrading } from './multi-coin-trading.js';
 import { OKXLiveTrading } from './okx-live-trading.js';
 import { multiAIAdvisor } from './multi-ai-advisor.js';
+import { forexAIAdvisor } from './forex-ai-advisor.js';
 import exchange from './coingecko.js';
 
 const client = new Client({
@@ -286,7 +287,8 @@ const handleHelp = async (message) => {
       { name: '🧠 智能交易', value: '`!smart BTC-USDT`\n自動選擇並優化策略', inline: true },
       { name: '🌐 多幣種交易', value: '`!multi`\n自動掃描多幣種', inline: true },
       { name: '📡 市場掃描', value: '`!scan`\n掃描所有幣種機會', inline: true },
-      { name: '🤖 AI 顧問團', value: '`!ai BTC`\n3個AI專家討論分析', inline: true },
+      { name: '🤖 AI 顧問團', value: '`!ai` 或 `!ai BTC`\n加密貨幣AI分析', inline: true },
+      { name: '🌍 外匯分析', value: '`!fx` 或 `!fx XAUUSD`\n外匯AI分析', inline: true },
       { name: '💱 OKX 交易', value: '`!okx start`\n連接交易所自動交易', inline: true },
     )
     .addFields({
@@ -715,6 +717,36 @@ const handleOKXStop = async (message) => {
   return true;
 };
 
+// 外匯 AI 顧問分析
+const handleForexAdvisor = async (message, content) => {
+  const args = content.split(/\s+/).slice(1);
+
+  const forexPairs = ['XAUUSD', 'EURUSD', 'GBPUSD', 'USDJPY'];
+
+  if (args.length === 0 || args[0]?.toLowerCase() === 'all' || args[0] === '全部') {
+    const loadingMsg = await message.reply(`🌍 正在分析 **${forexPairs.length} 個外匯貨幣對**...\n請稍候...`);
+
+    try {
+      const results = await forexAIAdvisor.analyzeAllForex();
+      const responseText = forexAIAdvisor.formatMultiForexMessage(results);
+      await loadingMsg.edit(responseText);
+    } catch (error) {
+      await loadingMsg.edit(`❌ 外匯分析失敗: ${error.message}`);
+    }
+  } else {
+    const pair = args[0].toUpperCase();
+    const loadingMsg = await message.reply(`🌍 正在分析 **${pair}**...`);
+
+    try {
+      const analysis = await forexAIAdvisor.analyzeWithAllAdvisors(pair);
+      const responseText = forexAIAdvisor.formatDiscordMessage(analysis);
+      await loadingMsg.edit(responseText);
+    } catch (error) {
+      await loadingMsg.edit(`❌ 外匯分析失敗: ${error.message}`);
+    }
+  }
+};
+
 // 多 AI 顧問分析
 const handleAIAdvisor = async (message, content) => {
   const args = content.split(/\s+/).slice(1);
@@ -904,6 +936,12 @@ client.on('messageCreate', async (message) => {
       case '分析':
       case 'advisor':
         await handleAIAdvisor(message, content);
+        break;
+
+      case 'fx':
+      case 'forex':
+      case '外匯':
+        await handleForexAdvisor(message, content);
         break;
 
       default:
