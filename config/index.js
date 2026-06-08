@@ -58,6 +58,7 @@ const config = Object.freeze({
   BINANCE_API_KEY: env.BINANCE_API_KEY || null,
   BINANCE_SECRET_KEY: env.BINANCE_SECRET_KEY || null,
   DISCORD_BOT_TOKEN: env.DISCORD_BOT_TOKEN || null,
+  GROQ_API_KEY: env.GROQ_API_KEY || null,
 });
 
 export default config;

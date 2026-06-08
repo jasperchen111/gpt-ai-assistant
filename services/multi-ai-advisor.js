@@ -1,5 +1,28 @@
-import { createChatCompletion, ROLE_SYSTEM, ROLE_HUMAN } from './openai.js';
+import axios from 'axios';
+import config from '../config/index.js';
 import okx from './okx.js';
+
+const groqClient = axios.create({
+  baseURL: 'https://api.groq.com/openai/v1',
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${config.GROQ_API_KEY}`,
+  },
+});
+
+const callGroq = async (systemPrompt, userPrompt) => {
+  const response = await groqClient.post('/chat/completions', {
+    model: 'llama-3.1-70b-versatile',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.3,
+    max_tokens: 300,
+  });
+  return response.data.choices[0].message.content;
+};
 
 const AI_ADVISORS = {
   technicalAnalyst: {
@@ -89,16 +112,7 @@ SMA(50)：$${marketData.sma50?.toFixed(2) || 'N/A'}
 請給出你的分析意見。`;
 
     try {
-      const response = await createChatCompletion({
-        messages: [
-          { role: ROLE_SYSTEM, content: advisor.systemPrompt },
-          { role: ROLE_HUMAN, content: prompt },
-        ],
-        temperature: 0.3,
-        maxTokens: 200,
-      });
-
-      const content = response.data.choices[0].message.content;
+      const content = await callGroq(advisor.systemPrompt, prompt);
       const jsonMatch = content.match(/\{[\s\S]*\}/);
 
       if (jsonMatch) {
