@@ -622,6 +622,12 @@ const handleOKXStart = async (message, content) => {
 
   try {
     const trader = new OKXLiveTrading();
+
+    // 除錯：打印實際的 config 值
+    const { default: cfg } = await import('../config/index.js');
+    console.log('[DEBUG] OKX_SIMULATED from config:', cfg.OKX_SIMULATED, 'type:', typeof cfg.OKX_SIMULATED);
+    console.log('[DEBUG] trader.isLive:', trader.isLive);
+
     const modeText = trader.isLive ? '🔴 實盤' : '🟡 模擬';
 
     const result = await trader.start({
