@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits, EmbedBuilder } from 'discord.js';
 import config from '../config/index.js';
 import backtest, { STRATEGY_SMA_CROSS, STRATEGY_RSI, STRATEGY_BOLLINGER, STRATEGY_GRID } from './backtest.js';
 import autoTrading from './auto-trading.js';
+import { adaptiveTrader } from './adaptive-trading.js';
 import exchange from './coingecko.js';
 
 const client = new Client({
@@ -13,6 +14,7 @@ const client = new Client({
 });
 
 const userStrategies = new Map();
+const userAdaptiveTraders = new Map();
 
 const parseArgs = (content) => {
   const args = content.split(/\s+/).filter(Boolean);
@@ -276,12 +278,17 @@ const handleHelp = async (message) => {
       { name: '📊 策略回測', value: '`!backtest BTC-USDT SMA 30天`\n`!backtest ETH-USDT RSI 60天`', inline: true },
       { name: '📈 策略比較', value: '`!compare BTC-USDT 30天`', inline: true },
       { name: '🚀 自動交易', value: '`!auto BTC-USDT`\n`!auto ETH-USDT 5分`', inline: true },
+      { name: '🧠 智能交易', value: '`!smart BTC-USDT`\n自動選擇並優化策略', inline: true },
       { name: '🛑 停止交易', value: '`!stop`', inline: true },
-      { name: '📋 查看狀態', value: '`!status`', inline: true },
     )
     .addFields({
       name: '📝 策略選項',
       value: '`SMA` - 均線交叉\n`RSI` - 超買超賣\n`BB` - 布林通道\n`GRID` - 網格交易',
+      inline: false,
+    })
+    .addFields({
+      name: '🧠 智能交易特色',
+      value: '• 自動評估並選擇最佳策略\n• 表現不佳時自動切換策略\n• 自動優化參數\n• 持續學習改善',
       inline: false,
     })
     .addFields({
@@ -292,6 +299,144 @@ const handleHelp = async (message) => {
     .setTimestamp();
 
   await message.reply({ embeds: [embed] });
+};
+
+const handleSmartStart = async (message, content) => {
+  const userId = message.author.id;
+  const args = parseArgs(content);
+
+  if (userAdaptiveTraders.has(userId)) {
+    await message.reply('⚠️ 你已有執行中的智能交易，請先使用 `!stop` 停止');
+    return;
+  }
+
+  const loadingMsg = await message.reply('🧠 正在分析市場並選擇最佳策略...');
+
+  try {
+    const { AdaptiveTrading } = await import('./adaptive-trading.js');
+    const trader = new AdaptiveTrading();
+
+    const result = await trader.start({
+      instId: args.instId,
+      interval: args.interval,
+      initialCapital: args.capital,
+      onUpdate: (update) => {
+        // 每次更新時的回調
+      },
+      onTrade: async (trade) => {
+        if (trade) {
+          const emoji = trade.type === 'BUY' ? '🟢' : '🔴';
+          const pnlText = trade.pnl ? ` | 損益: ${trade.pnl >= 0 ? '+' : ''}$${trade.pnl.toFixed(2)}` : '';
+          await message.channel.send(`${emoji} **${args.instId}** ${trade.type} @ $${trade.price.toFixed(2)}${pnlText}\n📝 ${trade.reason}`);
+        }
+      },
+      onStrategyChange: async (strategy) => {
+        await message.channel.send(`🔄 **策略切換** → ${strategy.label}\n得分: ${strategy.score?.toFixed(2) || 'N/A'}`);
+      },
+    });
+
+    userAdaptiveTraders.set(userId, trader);
+
+    const embed = new EmbedBuilder()
+      .setTitle('🧠 智能交易已啟動')
+      .setColor(0x00ff00)
+      .setDescription('系統將自動選擇最佳策略，並在表現不佳時自動切換和優化')
+      .addFields(
+        { name: '交易對', value: args.instId, inline: true },
+        { name: '當前策略', value: result.strategy.label, inline: true },
+        { name: '策略得分', value: result.strategy.score?.toFixed(2) || 'N/A', inline: true },
+        { name: '初始資金', value: `$${args.capital.toLocaleString()}`, inline: true },
+        { name: '分析間隔', value: `${args.interval / 1000} 秒`, inline: true },
+        { name: '模式', value: '模擬交易', inline: true },
+      )
+      .addFields({
+        name: '🔧 自適應功能',
+        value: '• 自動評估策略表現\n• 表現不佳時自動切換\n• 持續優化參數\n• 學習市場模式',
+        inline: false,
+      })
+      .setFooter({ text: '使用 !stop 停止 | !status 查看狀態' })
+      .setTimestamp();
+
+    await loadingMsg.edit({ content: '', embeds: [embed] });
+  } catch (error) {
+    await loadingMsg.edit(`❌ 啟動錯誤: ${error.message}`);
+  }
+};
+
+const handleSmartStop = async (message) => {
+  const userId = message.author.id;
+  const trader = userAdaptiveTraders.get(userId);
+
+  if (!trader) {
+    return false;
+  }
+
+  const result = trader.stop();
+  userAdaptiveTraders.delete(userId);
+
+  const embed = new EmbedBuilder()
+    .setTitle('🛑 智能交易已停止')
+    .setColor(0xff0000)
+    .addFields(
+      { name: '最終資金', value: `$${result.finalCapital?.toFixed(2) || 'N/A'}`, inline: true },
+      { name: '總交易次數', value: `${result.totalTrades}`, inline: true },
+      { name: '運行時間', value: result.runTime, inline: true },
+    );
+
+  if (result.performance) {
+    embed.addFields(
+      { name: '總損益', value: `${result.performance.totalPnl >= 0 ? '+' : ''}$${result.performance.totalPnl.toFixed(2)}`, inline: true },
+      { name: '勝率', value: `${result.performance.winRate.toFixed(1)}%`, inline: true },
+    );
+  }
+
+  embed.setTimestamp();
+
+  await message.reply({ embeds: [embed] });
+  return true;
+};
+
+const handleSmartStatus = async (message) => {
+  const userId = message.author.id;
+  const trader = userAdaptiveTraders.get(userId);
+
+  if (!trader) {
+    return false;
+  }
+
+  const status = trader.getStatus();
+
+  const embed = new EmbedBuilder()
+    .setTitle('🧠 智能交易狀態')
+    .setColor(0x5865f2)
+    .addFields(
+      { name: '交易對', value: status.instId || 'N/A', inline: true },
+      { name: '當前策略', value: status.currentStrategy?.label || 'N/A', inline: true },
+      { name: '運行時間', value: status.runTime, inline: true },
+      { name: '當前資金', value: `$${status.capital?.toFixed(2) || 'N/A'}`, inline: true },
+      { name: '交易次數', value: `${status.trades}`, inline: true },
+    );
+
+  if (status.position) {
+    embed.addFields({
+      name: '📍 持倉中',
+      value: `進場價: $${status.position.entryPrice.toFixed(2)}\n數量: ${status.position.qty.toFixed(6)}`,
+      inline: false,
+    });
+  }
+
+  if (status.recentPerformance) {
+    embed.addFields({
+      name: '📊 近期表現',
+      value: `損益: ${status.recentPerformance.totalPnl >= 0 ? '+' : ''}$${status.recentPerformance.totalPnl.toFixed(2)}\n勝率: ${status.recentPerformance.winRate.toFixed(1)}%`,
+      inline: false,
+    });
+  }
+
+  embed.setTimestamp();
+
+  await message.reply({ embeds: [embed] });
+  return true;
 };
 
 client.on('ready', () => {
@@ -330,14 +475,26 @@ client.on('messageCreate', async (message) => {
         await handleAutoStart(message, content);
         break;
 
+      case 'smart':
+      case '智能':
+      case '智慧':
+        await handleSmartStart(message, content);
+        break;
+
       case 'stop':
       case '停止':
-        await handleAutoStop(message);
+        const stoppedSmart = await handleSmartStop(message);
+        if (!stoppedSmart) {
+          await handleAutoStop(message);
+        }
         break;
 
       case 'status':
       case '狀態':
-        await handleStatus(message);
+        const showedSmart = await handleSmartStatus(message);
+        if (!showedSmart) {
+          await handleStatus(message);
+        }
         break;
 
       case 'help':
