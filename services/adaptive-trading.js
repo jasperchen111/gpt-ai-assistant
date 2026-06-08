@@ -468,6 +468,8 @@ ${recentPerformance ? `
   }
 }
 
+export { AdaptiveTrading };
+
 export const adaptiveTrader = new AdaptiveTrading();
 
 export default {
