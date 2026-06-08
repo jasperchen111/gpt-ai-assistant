@@ -223,6 +223,76 @@ SMA(50)：$${marketData.sma50?.toFixed(2) || 'N/A'}
 
     return message;
   }
+
+  async analyzeMultipleCoins(instIds) {
+    console.log(`🤖 多 AI 開始分析 ${instIds.length} 個幣種...`);
+
+    const results = [];
+
+    for (const instId of instIds) {
+      try {
+        const analysis = await this.analyzeWithAllAdvisors(instId);
+        if (!analysis.error) {
+          results.push(analysis);
+        }
+        await new Promise(r => setTimeout(r, 500)); // 避免 API 限制
+      } catch (error) {
+        console.error(`${instId} 分析失敗:`, error.message);
+      }
+    }
+
+    // 按照推薦程度排序：BUY > SELL > HOLD，再按信心度
+    results.sort((a, b) => {
+      const actionScore = { BUY: 3, SELL: 2, HOLD: 1 };
+      const scoreA = actionScore[a.finalDecision] * 100 + a.confidence;
+      const scoreB = actionScore[b.finalDecision] * 100 + b.confidence;
+      return scoreB - scoreA;
+    });
+
+    return results;
+  }
+
+  formatMultiCoinMessage(results) {
+    if (results.length === 0) {
+      return '❌ 無法取得任何幣種的分析結果';
+    }
+
+    let message = `**🤖 多 AI 協作分析 - ${results.length} 個幣種**\n\n`;
+
+    // 總覽表格
+    message += `**📊 分析總覽：**\n`;
+    for (const r of results) {
+      const emoji = r.finalDecision === 'BUY' ? '🟢' : r.finalDecision === 'SELL' ? '🔴' : '⚪';
+      const votes = `(${r.votes.BUY}/${r.votes.HOLD}/${r.votes.SELL})`;
+      message += `${emoji} **${r.instId}** | ${r.finalDecision} ${r.confidence}% | 價格: $${r.marketData.currentPrice?.toFixed(2)} | 投票${votes}\n`;
+    }
+
+    // 最佳機會
+    const buyOpportunities = results.filter(r => r.finalDecision === 'BUY');
+    const sellOpportunities = results.filter(r => r.finalDecision === 'SELL');
+
+    if (buyOpportunities.length > 0) {
+      message += `\n**🎯 最佳買入機會：**\n`;
+      const best = buyOpportunities[0];
+      message += `**${best.instId}** - 信心度 ${best.confidence}%\n`;
+      for (const op of best.opinions) {
+        message += `  ${op.emoji} ${op.advisor}: ${op.reason}\n`;
+      }
+    }
+
+    if (sellOpportunities.length > 0) {
+      message += `\n**⚠️ 建議賣出：**\n`;
+      for (const s of sellOpportunities) {
+        message += `**${s.instId}** - 信心度 ${s.confidence}%\n`;
+      }
+    }
+
+    if (buyOpportunities.length === 0 && sellOpportunities.length === 0) {
+      message += `\n**💤 目前無明顯機會，建議觀望**\n`;
+    }
+
+    return message;
+  }
 }
 
 export const multiAIAdvisor = new MultiAIAdvisor();

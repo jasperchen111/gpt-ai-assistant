@@ -718,20 +718,55 @@ const handleOKXStop = async (message) => {
 // 多 AI 顧問分析
 const handleAIAdvisor = async (message, content) => {
   const args = content.split(/\s+/).slice(1);
-  const instId = args[0]?.toUpperCase() || 'BTC-USDT';
 
-  // 格式化交易對
-  const formattedInstId = instId.includes('-') ? instId : `${instId}-USDT`;
+  // 預設監控清單
+  const defaultCoins = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT', 'XRP-USDT', 'DOGE-USDT'];
 
-  const loadingMsg = await message.reply(`🤖 正在召集 AI 顧問團分析 **${formattedInstId}**...`);
+  // 判斷是分析全部還是單一幣種
+  if (args.length === 0 || args[0]?.toLowerCase() === 'all' || args[0] === '全部') {
+    // 分析所有幣種
+    const loadingMsg = await message.reply(`🤖 正在召集 AI 顧問團分析 **${defaultCoins.length} 個幣種**...\n這需要一點時間，請稍候...`);
 
-  try {
-    const analysis = await multiAIAdvisor.analyzeWithAllAdvisors(formattedInstId);
-    const responseText = multiAIAdvisor.formatDiscordMessage(analysis);
+    try {
+      const results = await multiAIAdvisor.analyzeMultipleCoins(defaultCoins);
+      const responseText = multiAIAdvisor.formatMultiCoinMessage(results);
 
-    await loadingMsg.edit(responseText);
-  } catch (error) {
-    await loadingMsg.edit(`❌ AI 分析失敗: ${error.message}`);
+      await loadingMsg.edit(responseText);
+    } catch (error) {
+      await loadingMsg.edit(`❌ AI 分析失敗: ${error.message}`);
+    }
+  } else {
+    // 分析指定幣種（可多個）
+    const coins = args.map(arg => {
+      const upper = arg.toUpperCase();
+      return upper.includes('-') ? upper : `${upper}-USDT`;
+    });
+
+    if (coins.length === 1) {
+      // 單一幣種，顯示詳細分析
+      const loadingMsg = await message.reply(`🤖 正在召集 AI 顧問團分析 **${coins[0]}**...`);
+
+      try {
+        const analysis = await multiAIAdvisor.analyzeWithAllAdvisors(coins[0]);
+        const responseText = multiAIAdvisor.formatDiscordMessage(analysis);
+
+        await loadingMsg.edit(responseText);
+      } catch (error) {
+        await loadingMsg.edit(`❌ AI 分析失敗: ${error.message}`);
+      }
+    } else {
+      // 多個幣種，顯示總覽
+      const loadingMsg = await message.reply(`🤖 正在召集 AI 顧問團分析 **${coins.length} 個幣種**...\n這需要一點時間，請稍候...`);
+
+      try {
+        const results = await multiAIAdvisor.analyzeMultipleCoins(coins);
+        const responseText = multiAIAdvisor.formatMultiCoinMessage(results);
+
+        await loadingMsg.edit(responseText);
+      } catch (error) {
+        await loadingMsg.edit(`❌ AI 分析失敗: ${error.message}`);
+      }
+    }
   }
 };
 
