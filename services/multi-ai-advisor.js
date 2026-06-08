@@ -3,6 +3,14 @@ import config from '../config/index.js';
 import okx from './okx.js';
 
 const callGroq = async (systemPrompt, userPrompt) => {
+  // 除錯：檢查 API Key
+  const apiKey = config.GROQ_API_KEY;
+  console.log('[DEBUG] GROQ_API_KEY exists:', !!apiKey, 'length:', apiKey?.length || 0);
+
+  if (!apiKey) {
+    throw new Error('GROQ_API_KEY 未設定');
+  }
+
   const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
     model: 'llama-3.1-70b-versatile',
     messages: [
