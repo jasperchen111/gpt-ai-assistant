@@ -3,6 +3,7 @@ import config from '../config/index.js';
 import backtest, { STRATEGY_SMA_CROSS, STRATEGY_RSI, STRATEGY_BOLLINGER, STRATEGY_GRID } from './backtest.js';
 import autoTrading from './auto-trading.js';
 import adaptiveModule from './adaptive-trading.js';
+import { MultiCoinTrading } from './multi-coin-trading.js';
 import exchange from './coingecko.js';
 
 const client = new Client({
@@ -15,6 +16,7 @@ const client = new Client({
 
 const userStrategies = new Map();
 const userAdaptiveTraders = new Map();
+const userMultiTraders = new Map();
 
 const parseArgs = (content) => {
   const args = content.split(/\s+/).filter(Boolean);
@@ -279,7 +281,8 @@ const handleHelp = async (message) => {
       { name: '📈 策略比較', value: '`!compare BTC-USDT 30天`', inline: true },
       { name: '🚀 自動交易', value: '`!auto BTC-USDT`\n`!auto ETH-USDT 5分`', inline: true },
       { name: '🧠 智能交易', value: '`!smart BTC-USDT`\n自動選擇並優化策略', inline: true },
-      { name: '🛑 停止交易', value: '`!stop`', inline: true },
+      { name: '🌐 多幣種交易', value: '`!multi`\n自動掃描多幣種', inline: true },
+      { name: '📡 市場掃描', value: '`!scan`\n掃描所有幣種機會', inline: true },
     )
     .addFields({
       name: '📝 策略選項',
@@ -287,8 +290,8 @@ const handleHelp = async (message) => {
       inline: false,
     })
     .addFields({
-      name: '🧠 智能交易特色',
-      value: '• 自動評估並選擇最佳策略\n• 表現不佳時自動切換策略\n• 自動優化參數\n• 持續學習改善',
+      name: '🌐 多幣種交易特色',
+      value: '• 同時監控 10 個主流幣種\n• 自動找最佳進場機會\n• 最多持有 3 個倉位\n• BTC 沒機會就看其他幣',
       inline: false,
     })
     .addFields({
@@ -439,6 +442,171 @@ const handleSmartStatus = async (message) => {
   return true;
 };
 
+// 多幣種掃描
+const handleScan = async (message) => {
+  const loadingMsg = await message.reply('📡 正在掃描所有幣種...');
+
+  try {
+    const trader = new MultiCoinTrading();
+    const overview = await trader.getMarketOverview();
+
+    let description = '';
+
+    if (overview.bestBuy.length > 0) {
+      description += '**🟢 買入機會**\n';
+      overview.bestBuy.forEach((o, i) => {
+        description += `${i + 1}. **${o.instId}** - 得分: ${o.score} | RSI: ${o.rsi} | ${o.reasons.join(', ')}\n`;
+      });
+      description += '\n';
+    }
+
+    if (overview.bestSell.length > 0) {
+      description += '**🔴 賣出信號**\n';
+      overview.bestSell.forEach((o, i) => {
+        description += `${i + 1}. **${o.instId}** - 得分: ${o.score} | RSI: ${o.rsi} | ${o.reasons.join(', ')}\n`;
+      });
+      description += '\n';
+    }
+
+    const holdCoins = overview.coins.filter(o => o.action === 'HOLD');
+    if (holdCoins.length > 0) {
+      description += '**⚪ 觀望中**\n';
+      description += holdCoins.map(o => o.instId).join(', ');
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle('📊 市場掃描報告')
+      .setColor(0x5865f2)
+      .setDescription(description || '目前無明顯機會')
+      .setFooter({ text: `掃描 ${overview.coins.length} 個幣種` })
+      .setTimestamp();
+
+    await loadingMsg.edit({ content: '', embeds: [embed] });
+  } catch (error) {
+    await loadingMsg.edit(`❌ 掃描錯誤: ${error.message}`);
+  }
+};
+
+// 多幣種自動交易
+const handleMultiStart = async (message, content) => {
+  const userId = message.author.id;
+
+  if (userMultiTraders.has(userId)) {
+    await message.reply('⚠️ 你已有執行中的多幣種交易，請先使用 `!stop` 停止');
+    return;
+  }
+
+  const loadingMsg = await message.reply('🚀 正在啟動多幣種智能交易...');
+
+  try {
+    const trader = new MultiCoinTrading();
+
+    await trader.start({
+      interval: 60000,
+      initialCapital: 10000,
+      maxPositions: 3,
+      onOpportunity: async (opp) => {
+        await message.channel.send(`🔍 發現機會: **${opp.instId}** | 得分: ${opp.score} | ${opp.reasons.join(', ')}`);
+      },
+      onTrade: async (trade) => {
+        const emoji = trade.type === 'BUY' ? '🟢' : '🔴';
+        const pnlText = trade.pnl ? ` | 損益: ${trade.pnl >= 0 ? '+' : ''}$${trade.pnl.toFixed(2)}` : '';
+        await message.channel.send(`${emoji} **${trade.instId}** ${trade.type} @ $${trade.price.toFixed(2)}${pnlText}\n📝 ${trade.reasons.join(', ')}`);
+      },
+    });
+
+    userMultiTraders.set(userId, trader);
+
+    const embed = new EmbedBuilder()
+      .setTitle('🌐 多幣種智能交易已啟動')
+      .setColor(0x00ff00)
+      .setDescription('系統將自動掃描多個幣種，尋找最佳進場機會')
+      .addFields(
+        { name: '監控幣種', value: trader.watchList.slice(0, 5).join(', ') + '...', inline: true },
+        { name: '最大持倉', value: `${trader.config.maxPositions} 個`, inline: true },
+        { name: '掃描間隔', value: '60 秒', inline: true },
+      )
+      .addFields({
+        name: '📋 功能',
+        value: '• 自動掃描 10 個主流幣種\n• 自動選擇最佳進場點\n• 最多同時持有 3 個倉位\n• 自動止盈止損',
+        inline: false,
+      })
+      .setFooter({ text: '使用 !stop 停止 | !status 查看狀態 | !scan 手動掃描' })
+      .setTimestamp();
+
+    await loadingMsg.edit({ content: '', embeds: [embed] });
+  } catch (error) {
+    await loadingMsg.edit(`❌ 啟動錯誤: ${error.message}`);
+  }
+};
+
+const handleMultiStop = async (message) => {
+  const userId = message.author.id;
+  const trader = userMultiTraders.get(userId);
+
+  if (!trader) {
+    return false;
+  }
+
+  const result = trader.stop();
+  userMultiTraders.delete(userId);
+
+  const embed = new EmbedBuilder()
+    .setTitle('🛑 多幣種交易已停止')
+    .setColor(0xff0000)
+    .addFields(
+      { name: '最終資金', value: `$${result.finalCapital.toFixed(2)}`, inline: true },
+      { name: '總交易次數', value: `${result.totalTrades}`, inline: true },
+      { name: '完成交易', value: `${result.completedTrades}`, inline: true },
+      { name: '總損益', value: `${result.totalPnl >= 0 ? '+' : ''}$${result.totalPnl.toFixed(2)}`, inline: true },
+      { name: '勝率', value: `${result.winRate.toFixed(1)}%`, inline: true },
+      { name: '運行時間', value: result.runTime, inline: true },
+    )
+    .setTimestamp();
+
+  await message.reply({ embeds: [embed] });
+  return true;
+};
+
+const handleMultiStatus = async (message) => {
+  const userId = message.author.id;
+  const trader = userMultiTraders.get(userId);
+
+  if (!trader) {
+    return false;
+  }
+
+  const status = trader.getStatus();
+
+  let positionsText = '無';
+  if (status.positions.length > 0) {
+    positionsText = status.positions.map(p =>
+      `${p.instId}: $${p.entryPrice.toFixed(2)} (${p.qty.toFixed(4)})`
+    ).join('\n');
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle('🌐 多幣種交易狀態')
+    .setColor(0x5865f2)
+    .addFields(
+      { name: '當前資金', value: `$${status.capital.toFixed(2)}`, inline: true },
+      { name: '持倉數', value: `${status.positionsCount}/${trader.config.maxPositions}`, inline: true },
+      { name: '運行時間', value: status.runTime, inline: true },
+      { name: '總交易', value: `${status.trades}`, inline: true },
+      { name: '完成交易', value: `${status.completedTrades}`, inline: true },
+      { name: '總損益', value: `${status.totalPnl >= 0 ? '+' : ''}$${status.totalPnl.toFixed(2)}`, inline: true },
+    )
+    .addFields({
+      name: '📍 當前持倉',
+      value: positionsText,
+      inline: false,
+    })
+    .setTimestamp();
+
+  await message.reply({ embeds: [embed] });
+  return true;
+};
+
 client.on('ready', () => {
   console.log(`✅ Discord Bot 已啟動: ${client.user.tag}`);
 });
@@ -481,19 +649,36 @@ client.on('messageCreate', async (message) => {
         await handleSmartStart(message, content);
         break;
 
+      case 'multi':
+      case '多幣':
+      case '全部':
+        await handleMultiStart(message, content);
+        break;
+
+      case 'scan':
+      case '掃描':
+        await handleScan(message);
+        break;
+
       case 'stop':
       case '停止':
-        const stoppedSmart = await handleSmartStop(message);
-        if (!stoppedSmart) {
-          await handleAutoStop(message);
+        const stoppedMulti = await handleMultiStop(message);
+        if (!stoppedMulti) {
+          const stoppedSmart = await handleSmartStop(message);
+          if (!stoppedSmart) {
+            await handleAutoStop(message);
+          }
         }
         break;
 
       case 'status':
       case '狀態':
-        const showedSmart = await handleSmartStatus(message);
-        if (!showedSmart) {
-          await handleStatus(message);
+        const showedMulti = await handleMultiStatus(message);
+        if (!showedMulti) {
+          const showedSmart = await handleSmartStatus(message);
+          if (!showedSmart) {
+            await handleStatus(message);
+          }
         }
         break;
 
