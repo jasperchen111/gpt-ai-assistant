@@ -4,6 +4,7 @@ import backtest, { STRATEGY_SMA_CROSS, STRATEGY_RSI, STRATEGY_BOLLINGER, STRATEG
 import autoTrading from './auto-trading.js';
 import adaptiveModule from './adaptive-trading.js';
 import { MultiCoinTrading } from './multi-coin-trading.js';
+import { OKXLiveTrading } from './okx-live-trading.js';
 import exchange from './coingecko.js';
 
 const client = new Client({
@@ -17,6 +18,7 @@ const client = new Client({
 const userStrategies = new Map();
 const userAdaptiveTraders = new Map();
 const userMultiTraders = new Map();
+const userOKXTraders = new Map();
 
 const parseArgs = (content) => {
   const args = content.split(/\s+/).filter(Boolean);
@@ -607,6 +609,124 @@ const handleMultiStatus = async (message) => {
   return true;
 };
 
+// OKX 實盤交易
+const handleOKXStart = async (message, content) => {
+  const userId = message.author.id;
+
+  if (userOKXTraders.has(userId)) {
+    await message.reply('⚠️ 你已有執行中的 OKX 交易，請先使用 `!stop` 停止');
+    return;
+  }
+
+  const loadingMsg = await message.reply('🔗 正在連接 OKX 交易所...');
+
+  try {
+    const trader = new OKXLiveTrading();
+    const modeText = trader.isLive ? '🔴 實盤' : '🟡 模擬';
+
+    const result = await trader.start({
+      interval: 60000,
+      positionSize: 50,
+      maxPositions: 2,
+      onOpportunity: async (opp) => {
+        await message.channel.send(`🔍 **${opp.instId}** 發現機會 | 得分: ${opp.score} | ${opp.reasons.join(', ')}`);
+      },
+      onTrade: async (trade) => {
+        const emoji = trade.type === 'BUY' ? '🟢' : '🔴';
+        const pnlText = trade.pnl ? ` | 損益: ${trade.pnl >= 0 ? '+' : ''}$${trade.pnl.toFixed(2)}` : '';
+        const liveTag = trade.live ? ' [實盤]' : ' [模擬]';
+        await message.channel.send(`${emoji} **${trade.instId}** ${trade.type} @ $${trade.price.toFixed(2)}${pnlText}${liveTag}\n📝 ${trade.reasons.join(', ')}`);
+      },
+      onError: async (error) => {
+        await message.channel.send(`⚠️ 錯誤: ${error.message}`);
+      },
+    });
+
+    userOKXTraders.set(userId, trader);
+
+    const embed = new EmbedBuilder()
+      .setTitle(`${modeText} OKX 交易已啟動`)
+      .setColor(trader.isLive ? 0xff0000 : 0xffff00)
+      .setDescription(trader.isLive ? '⚠️ 這是真實交易，會使用你的資金！' : '這是模擬交易，不會真實下單')
+      .addFields(
+        { name: '帳戶餘額', value: `${result.balance.usdt.toFixed(2)} USDT`, inline: true },
+        { name: '每筆金額', value: `$50`, inline: true },
+        { name: '最大持倉', value: `2 個`, inline: true },
+        { name: '監控幣種', value: trader.watchList.join(', '), inline: false },
+      )
+      .setFooter({ text: '使用 !stop 停止 | !status 查看狀態' })
+      .setTimestamp();
+
+    await loadingMsg.edit({ content: '', embeds: [embed] });
+  } catch (error) {
+    await loadingMsg.edit(`❌ 連接 OKX 失敗: ${error.message}`);
+  }
+};
+
+const handleOKXStop = async (message) => {
+  const userId = message.author.id;
+  const trader = userOKXTraders.get(userId);
+
+  if (!trader) {
+    return false;
+  }
+
+  const result = trader.stop();
+  userOKXTraders.delete(userId);
+
+  const embed = new EmbedBuilder()
+    .setTitle(`🛑 OKX ${result.mode === 'LIVE' ? '實盤' : '模擬'}交易已停止`)
+    .setColor(0xff0000)
+    .addFields(
+      { name: '總交易次數', value: `${result.totalTrades}`, inline: true },
+      { name: '完成交易', value: `${result.completedTrades}`, inline: true },
+      { name: '總損益', value: `${result.totalPnl >= 0 ? '+' : ''}$${result.totalPnl.toFixed(2)}`, inline: true },
+      { name: '勝率', value: `${result.winRate.toFixed(1)}%`, inline: true },
+      { name: '運行時間', value: result.runTime, inline: true },
+    )
+    .setTimestamp();
+
+  await message.reply({ embeds: [embed] });
+  return true;
+};
+
+const handleOKXStatus = async (message) => {
+  const userId = message.author.id;
+  const trader = userOKXTraders.get(userId);
+
+  if (!trader) {
+    return false;
+  }
+
+  const status = trader.getStatus();
+
+  let positionsText = '無';
+  if (status.positions.length > 0) {
+    positionsText = status.positions.map(p =>
+      `${p.instId}: $${p.entryPrice.toFixed(2)} x ${p.qty.toFixed(6)}`
+    ).join('\n');
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle(`📊 OKX ${status.mode === 'LIVE' ? '實盤' : '模擬'}交易狀態`)
+    .setColor(status.mode === 'LIVE' ? 0xff0000 : 0xffff00)
+    .addFields(
+      { name: '持倉數', value: `${status.positionsCount}/2`, inline: true },
+      { name: '交易次數', value: `${status.trades}`, inline: true },
+      { name: '總損益', value: `${status.totalPnl >= 0 ? '+' : ''}$${status.totalPnl.toFixed(2)}`, inline: true },
+      { name: '運行時間', value: status.runTime, inline: true },
+    )
+    .addFields({
+      name: '📍 當前持倉',
+      value: positionsText,
+      inline: false,
+    })
+    .setTimestamp();
+
+  await message.reply({ embeds: [embed] });
+  return true;
+};
+
 client.on('ready', () => {
   console.log(`✅ Discord Bot 已啟動: ${client.user.tag}`);
 });
@@ -655,6 +775,12 @@ client.on('messageCreate', async (message) => {
         await handleMultiStart(message, content);
         break;
 
+      case 'okx':
+      case '交易所':
+      case 'live':
+        await handleOKXStart(message, content);
+        break;
+
       case 'scan':
       case '掃描':
         await handleScan(message);
@@ -662,22 +788,28 @@ client.on('messageCreate', async (message) => {
 
       case 'stop':
       case '停止':
-        const stoppedMulti = await handleMultiStop(message);
-        if (!stoppedMulti) {
-          const stoppedSmart = await handleSmartStop(message);
-          if (!stoppedSmart) {
-            await handleAutoStop(message);
+        const stoppedOKX = await handleOKXStop(message);
+        if (!stoppedOKX) {
+          const stoppedMulti = await handleMultiStop(message);
+          if (!stoppedMulti) {
+            const stoppedSmart = await handleSmartStop(message);
+            if (!stoppedSmart) {
+              await handleAutoStop(message);
+            }
           }
         }
         break;
 
       case 'status':
       case '狀態':
-        const showedMulti = await handleMultiStatus(message);
-        if (!showedMulti) {
-          const showedSmart = await handleSmartStatus(message);
-          if (!showedSmart) {
-            await handleStatus(message);
+        const showedOKX = await handleOKXStatus(message);
+        if (!showedOKX) {
+          const showedMulti = await handleMultiStatus(message);
+          if (!showedMulti) {
+            const showedSmart = await handleSmartStatus(message);
+            if (!showedSmart) {
+              await handleStatus(message);
+            }
           }
         }
         break;
