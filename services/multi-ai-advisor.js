@@ -11,22 +11,27 @@ const callGroq = async (systemPrompt, userPrompt) => {
     throw new Error('GROQ_API_KEY 未設定');
   }
 
-  const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-    model: 'llama3-70b-8192',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
-    temperature: 0.3,
-    max_tokens: 300,
-  }, {
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.GROQ_API_KEY}`,
-    },
-    timeout: 30000,
-  });
-  return response.data.choices[0].message.content;
+  try {
+    const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+      model: 'llama3-70b-8192',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.3,
+      max_tokens: 300,
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.GROQ_API_KEY}`,
+      },
+      timeout: 30000,
+    });
+    return response.data.choices[0].message.content;
+  } catch (error) {
+    console.error('[GROQ ERROR]', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 const AI_ADVISORS = {
