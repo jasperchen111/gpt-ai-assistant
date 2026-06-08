@@ -2,17 +2,8 @@ import axios from 'axios';
 import config from '../config/index.js';
 import okx from './okx.js';
 
-const groqClient = axios.create({
-  baseURL: 'https://api.groq.com/openai/v1',
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${config.GROQ_API_KEY}`,
-  },
-});
-
 const callGroq = async (systemPrompt, userPrompt) => {
-  const response = await groqClient.post('/chat/completions', {
+  const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
     model: 'llama-3.1-70b-versatile',
     messages: [
       { role: 'system', content: systemPrompt },
@@ -20,6 +11,12 @@ const callGroq = async (systemPrompt, userPrompt) => {
     ],
     temperature: 0.3,
     max_tokens: 300,
+  }, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${config.GROQ_API_KEY}`,
+    },
+    timeout: 30000,
   });
   return response.data.choices[0].message.content;
 };
