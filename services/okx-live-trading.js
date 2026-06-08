@@ -18,7 +18,7 @@ export class OKXLiveTrading {
     this.config = {
       maxPositions: 2,
       positionSizeUSDT: 50,
-      minScore: 70,
+      minScore: 50,  // 降低門檻：從 70 降到 50
       evaluationInterval: 60000,
     };
     this.startTime = null;
@@ -86,26 +86,39 @@ export class OKXLiveTrading {
       }
     }
 
-    // RSI
+    // RSI - 放寬條件
     const rsi = indicators.rsi14;
     if (rsi) {
-      if (rsi < 30) {
-        signals.push({ strategy: 'RSI', action: 'BUY', strength: 90 - rsi });
-      } else if (rsi > 70) {
-        signals.push({ strategy: 'RSI', action: 'SELL', strength: rsi - 10 });
+      if (rsi < 35) {  // 從 30 放寬到 35
+        signals.push({ strategy: 'RSI', action: 'BUY', strength: 85 - rsi });
+      } else if (rsi > 65) {  // 從 70 放寬到 65
+        signals.push({ strategy: 'RSI', action: 'SELL', strength: rsi - 15 });
       }
     }
 
-    // 布林通道
+    // 布林通道 - 放寬條件
     const bb = indicators.bollingerBands;
     if (bb) {
       const price = indicators.currentPrice;
-      if (price < bb.lower) {
-        const strength = Math.min(90, 60 + ((bb.lower - price) / price) * 1000);
+      const bbWidth = (bb.upper - bb.lower) / bb.middle;
+
+      // 接近下軌就給信號（不用等到觸及）
+      if (price < bb.lower * 1.01) {  // 在下軌 1% 以內
+        const strength = Math.min(85, 55 + ((bb.lower - price) / price) * 500);
         signals.push({ strategy: 'BB', action: 'BUY', strength });
-      } else if (price > bb.upper) {
-        const strength = Math.min(90, 60 + ((price - bb.upper) / price) * 1000);
+      } else if (price > bb.upper * 0.99) {  // 在上軌 1% 以內
+        const strength = Math.min(85, 55 + ((price - bb.upper) / price) * 500);
         signals.push({ strategy: 'BB', action: 'SELL', strength });
+      }
+    }
+
+    // 新增：趨勢跟隨策略
+    if (shortSma && longSma) {
+      const trendStrength = ((shortSma - longSma) / longSma) * 100;
+      if (trendStrength > 1) {  // 短均線高於長均線 1%
+        signals.push({ strategy: 'TREND', action: 'BUY', strength: 50 + trendStrength * 5 });
+      } else if (trendStrength < -1) {
+        signals.push({ strategy: 'TREND', action: 'SELL', strength: 50 + Math.abs(trendStrength) * 5 });
       }
     }
 
