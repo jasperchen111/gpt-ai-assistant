@@ -634,8 +634,24 @@ const handleOKXStart = async (message, content) => {
       interval: 60000,
       positionSize: 50,
       maxPositions: 2,
+      onScan: async (opportunities) => {
+        // 每次掃描完成後顯示結果
+        const summary = opportunities.map(o =>
+          `${o.instId}: ${o.action} (${o.score}分) RSI:${o.rsi || 'N/A'}`
+        ).join('\n');
+        console.log('📊 掃描結果:\n' + summary);
+
+        // 找出有信號的幣種
+        const signals = opportunities.filter(o => o.action !== 'HOLD' && o.score > 0);
+        if (signals.length > 0) {
+          const signalText = signals.map(o =>
+            `**${o.instId}** ${o.action === 'BUY' ? '🟢買入' : '🔴賣出'} 得分:${o.score} (${o.reasons.join(', ')})`
+          ).join('\n');
+          await message.channel.send(`📡 **掃描完成**\n${signalText}`);
+        }
+      },
       onOpportunity: async (opp) => {
-        await message.channel.send(`🔍 **${opp.instId}** 發現機會 | 得分: ${opp.score} | ${opp.reasons.join(', ')}`);
+        await message.channel.send(`🎯 **${opp.instId}** 準備進場 | 得分: ${opp.score} | ${opp.reasons.join(', ')}`);
       },
       onTrade: async (trade) => {
         const emoji = trade.type === 'BUY' ? '🟢' : '🔴';
