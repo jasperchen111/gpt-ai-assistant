@@ -1,71 +1,55 @@
 import axios from 'axios';
 
 const FOREX_PAIRS = {
-  'XAUUSD': { name: '黃金/美元', symbol: 'XAU/USD' },
-  'EURUSD': { name: '歐元/美元', symbol: 'EUR/USD' },
-  'GBPUSD': { name: '英鎊/美元', symbol: 'GBP/USD' },
-  'USDJPY': { name: '美元/日圓', symbol: 'USD/JPY' },
-};
-
-// 使用 Twelve Data API (免費: 800次/天, 8次/分鐘)
-const TWELVE_DATA_URL = 'https://api.twelvedata.com';
-
-// 備用: Alpha Vantage
-const ALPHA_VANTAGE_URL = 'https://www.alphavantage.co/query';
-
-export const getForexPrice = async (pair) => {
-  const symbol = FOREX_PAIRS[pair]?.symbol || pair;
-
-  try {
-    // 使用 Twelve Data 免費 API (不需要 key 的基本查詢)
-    const response = await axios.get(`${TWELVE_DATA_URL}/price`, {
-      params: { symbol },
-      timeout: 10000,
-    });
-
-    if (response.data && response.data.price) {
-      return {
-        code: '0',
-        data: {
-          pair,
-          symbol,
-          price: parseFloat(response.data.price),
-          name: FOREX_PAIRS[pair]?.name || pair,
-        },
-      };
-    }
-  } catch (error) {
-    console.error(`獲取 ${pair} 價格失敗:`, error.message);
-  }
-
-  return { code: '-1', error: '無法獲取價格' };
+  'XAUUSD': { name: '黃金/美元', yahoo: 'GC=F' },
+  'EURUSD': { name: '歐元/美元', yahoo: 'EURUSD=X' },
+  'GBPUSD': { name: '英鎊/美元', yahoo: 'GBPUSD=X' },
+  'USDJPY': { name: '美元/日圓', yahoo: 'JPY=X' },
 };
 
 export const getForexCandles = async (pair, interval = '1h', limit = 50) => {
-  const symbol = FOREX_PAIRS[pair]?.symbol || pair;
+  const yahooSymbol = FOREX_PAIRS[pair]?.yahoo || pair;
 
   try {
-    const response = await axios.get(`${TWELVE_DATA_URL}/time_series`, {
-      params: {
-        symbol,
-        interval,
-        outputsize: limit,
-      },
-      timeout: 15000,
-    });
+    // 使用 Yahoo Finance API (完全免費，不需要 Key)
+    const period1 = Math.floor(Date.now() / 1000) - (limit * 3600);
+    const period2 = Math.floor(Date.now() / 1000);
 
-    if (response.data && response.data.values) {
-      // 轉換為統一格式 [timestamp, open, high, low, close, volume]
-      const candles = response.data.values.map(v => [
-        new Date(v.datetime).getTime().toString(),
-        v.open,
-        v.high,
-        v.low,
-        v.close,
-        '0',
-      ]);
+    const response = await axios.get(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}`,
+      {
+        params: {
+          interval: '1h',
+          period1,
+          period2,
+        },
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+        timeout: 15000,
+      }
+    );
 
-      return { code: '0', data: candles };
+    const result = response.data?.chart?.result?.[0];
+    if (result && result.timestamp && result.indicators?.quote?.[0]) {
+      const { timestamp } = result;
+      const quote = result.indicators.quote[0];
+
+      const candles = [];
+      for (let i = 0; i < timestamp.length; i++) {
+        if (quote.open[i] && quote.high[i] && quote.low[i] && quote.close[i]) {
+          candles.push([
+            (timestamp[i] * 1000).toString(),
+            quote.open[i].toString(),
+            quote.high[i].toString(),
+            quote.low[i].toString(),
+            quote.close[i].toString(),
+            (quote.volume?.[i] || 0).toString(),
+          ]);
+        }
+      }
+
+      return { code: '0', data: candles.reverse() };
     }
   } catch (error) {
     console.error(`獲取 ${pair} K線失敗:`, error.message);
